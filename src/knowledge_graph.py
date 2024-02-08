@@ -1,4 +1,4 @@
-from py2neo import NodeMatcher, RelationshipMatcher
+from py2neo import Graph, NodeMatcher, RelationshipMatcher
 import re
 
 
@@ -8,10 +8,10 @@ class KnowledgeGraph:
     the Neo4j database from which the graph is intialized.
     '''
 
-    def __init__(self, graph):
-        self.graph = graph
-        self.node_matcher = NodeMatcher(graph)
-        self.rel_matcher = RelationshipMatcher(graph)
+    def __init__(self, uri, user, password):
+        self.graph = Graph(uri, auth=(user, password))
+        self.node_matcher = NodeMatcher(self.graph)
+        self.rel_matcher = RelationshipMatcher(self.graph)
 
     def get_ingredient_count(self):
         return self.graph.evaluate(
