@@ -13,7 +13,8 @@ BASE_URL = os.getenv("EDAMAM_BASE_URL")
 class GraphBuilder:
     '''
     Class for building/updating a knowledge graph of recipes and ingredients.
-    This is separate from the class for querying the knowledge graph.
+    This is separate from the class for querying the knowledge graph and should
+    only be run once.
     '''
 
     def __init__(self, uri, user, password):
@@ -133,10 +134,12 @@ if __name__ == "__main__":
     """
 
     # Execute the Cypher query
-    node_count = 2000
+    result = graph_builder.graph.run(query).data()
+    node_count = result[0]['nodeCount']
 
     while node_count < 5000:
         print(f"Current node count: {node_count}")
         graph_builder.build_knowledge_graph()
         result = graph_builder.graph.run(query).data()
         node_count = result[0]['nodeCount']
+    print(f"Final node count: {node_count}")

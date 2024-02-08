@@ -3,3 +3,4 @@ py2neo
 recipe_scrapers
 requests
 python-dotenv
+flask
