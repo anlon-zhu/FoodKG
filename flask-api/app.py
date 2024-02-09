@@ -147,8 +147,6 @@ class RecipeModel(Schema):
 
 
 def serializeIngredient(ingredient):
-    print(ingredient)
-    print(ingredient.get('id'))
     return {
         'id': ingredient['id'],
         'name': ingredient['name'],
@@ -253,6 +251,56 @@ class RecipeListByIngredient(Resource):
         return {'message': 'Ingredient not found'}, 404
 
 
+class RecipesByMultipleIngredients(Resource):
+    def post(self):
+        ingredient_ids = request.json.get('ingredientIds')
+
+        if not ingredient_ids:
+            return {'message': 'No ingredient IDs provided'}, 400
+
+        db = get_db()
+
+        query = """
+        MATCH p=(ingredient:Ingredient)-[:PART_OF]->(recipe:Recipe)
+        WHERE ID(ingredient) in $ingredientIds
+        RETURN p
+        """
+        result = db.read_transaction(lambda tx: tx.run(
+            query, ingredientIds=ingredient_ids).data())
+
+        node_item_map = {}
+        link_item_map = {}
+
+        for item in result:
+            p_array = item['p']
+
+            # Extract node and relationship information
+            ingredient = p_array[0]
+            relationship_type = p_array[1]
+            recipe = p_array[2]
+
+            # Add nodes to nodeItemMap if not already present
+            if ingredient['name'] not in node_item_map:
+                ingredient['type'] = 'ingredient'
+                node_item_map[ingredient['name']] = ingredient
+            if recipe['name'] not in node_item_map:
+                recipe['type'] = 'recipe'
+                node_item_map[recipe['name']] = recipe
+
+            # Add relationship to linkItemMap
+            link_id = f"{ingredient['name']}_{relationship_type}_{recipe['name']}"
+            link_item_map[link_id] = {
+                'source': ingredient['name'],
+                'target': recipe['name'],
+                'relationship': relationship_type
+            }
+
+        return {
+            'nodes': list(node_item_map.values()),
+            'links': list(link_item_map.values())
+        }
+
+
 ########## LINKING ##########
 api.add_resource(IngredientList, '/ingredients')
 api.add_resource(Ingredient, '/ingredients/<int:id>')
@@ -262,3 +310,5 @@ api.add_resource(RecipeList, '/recipes')
 api.add_resource(Recipe, '/recipes/<int:id>')
 api.add_resource(RecipeListByIngredient,
                  '/ingredients/<int:id>/recipes')
+api.add_resource(RecipesByMultipleIngredients,
+                 '/recipes/by-ingredients')
