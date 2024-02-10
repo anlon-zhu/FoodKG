@@ -5,11 +5,17 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #FAF9F6  ;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+h1 {
+  margin: auto;
+  padding: 20px;
 }
 
 #tooltip {
@@ -24,10 +30,23 @@ code {
   padding: 8px;
   color: #333;
 }
-
-
+xw
 .tooltip-title {
   color: #000;
   font-size: 14px;
   font-weight: 600;
+}
+
+.text-wrapper {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  font-size: 8px;
+  text-align: center; /* Start the text from the center */
+}
+
+.text-wrapper span {
+  width: 100%;
+  word-wrap: break-word; /* Allow long words to break and wrap onto the next line */
 }

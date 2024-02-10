@@ -21,12 +21,17 @@ function App() {
 
   const handleIngredientChange = (event, newValue) => {
     setSelectedIngredients(newValue);
-    // You can perform any additional logic here, such as fetching data based on the selected ingredients
+    
+    // Check if newValue is empty
+    if (newValue.length === 0) {
+      // Clear the graph or perform any other necessary action
+      updateGraph(null);
+      return;
+    }
     
     // Fetch graph data based on selected ingredient
     axios.post('http://localhost:5000/recipes/by-ingredients', { ingredientIds: newValue.map(ingredient => ingredient.id)})
       .then(response => {
-        console.log('Graph data:', response.data);
         updateGraph(response.data);
       })
       .catch(error => {
@@ -46,7 +51,7 @@ function App() {
 
   return (
     <div>
-      <h1>Recipe Graph Visualization</h1>
+      <h1>flavornet</h1>
       <IngredientSelect
         ingredients={ingredients}
         selectedIngredients={selectedIngredients}

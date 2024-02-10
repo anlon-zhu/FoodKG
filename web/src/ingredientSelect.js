@@ -1,6 +1,7 @@
 import React from 'react';
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 
 const IngredientSelect = ({ ingredients, selectedIngredients, handleIngredientChange }) => {
     const options = ingredients.map((option) => {
@@ -13,8 +14,18 @@ const IngredientSelect = ({ ingredients, selectedIngredients, handleIngredientCh
           ...option,
         };
       });
+
+  // Define custom theme
+  const theme = createTheme({
+      palette: {
+          primary: {
+              main: '#ff9800', // Change the main color to your desired color
+          },
+      },
+  });
       
   return (
+    <ThemeProvider theme={theme}>
     <Autocomplete
       multiple
       limitTags={10}
@@ -33,7 +44,9 @@ const IngredientSelect = ({ ingredients, selectedIngredients, handleIngredientCh
           placeholder="Select Ingredients"
         />
       )}
+      isOptionEqualToValue={(option, value) => option.id === value.id}
     />
+    </ThemeProvider>
   );
 };
 

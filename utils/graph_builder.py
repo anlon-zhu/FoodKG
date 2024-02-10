@@ -3,11 +3,22 @@ from py2neo import Graph, Node, Relationship
 from recipe_scrapers import scrape_me
 import requests
 from dotenv import load_dotenv
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+import spacy
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 load_dotenv()
 APP_ID = os.getenv("EDAMAM_APP_ID")
 APP_KEY = os.getenv("EDAMAM_APP_KEY")
 BASE_URL = os.getenv("EDAMAM_BASE_URL")
+
+# Ensure you have the necessary NLTK data and spacy model
+# nltk.download('stopwords')
+# nltk.download('wordnet')
+# spacy.cli.download("en_core_web_md")
 
 
 class GraphBuilder:
@@ -19,6 +30,7 @@ class GraphBuilder:
 
     def __init__(self, uri, user, password):
         self.graph = Graph(uri, auth=(user, password))
+        self.nlp = spacy.load("en_core_web_md")
 
     def search_recipes_by_ingredient(self, ingredient):
         endpoint = f'{BASE_URL}/'
@@ -47,16 +59,106 @@ class GraphBuilder:
 
         return data.get('hits', [])
 
+    def extract_key_terms(self, ingredient):
+        # Process the ingredient name with spaCy
+        doc = self.nlp(ingredient)
+        key_terms = []
+
+        # Extract nouns and proper nouns as they are likely to be key ingredients
+        for token in doc:
+            if token.pos_ in ['NOUN', 'PROPN', 'VERB']:
+                key_terms.append(token.text)
+
+        # Returning a string that combines the key terms
+        return ' '.join(key_terms)
+
+    def preprocess_ingredient(self, ingredient):
+        # Normalize case
+        ingredient = ingredient.lower()
+
+        # Focus on key terms
+        ingredient = self.extract_key_terms(ingredient)
+
+        # Tokenize and remove stopwords
+        tokens = [token for token in ingredient.split()
+                  if token not in stopwords.words('english')]
+        # Lemmatize
+        lemmatizer = WordNetLemmatizer()
+        lemmatized = [lemmatizer.lemmatize(token) for token in tokens]
+        return ' '.join(lemmatized)
+
+    def soft_preprocess_ingredient(self, ingredient):
+        # Normalize case
+        ingredient = ingredient.lower()
+
+        # Tokenize and remove stopwords
+        tokens = [token for token in ingredient.split()
+                  if token not in stopwords.words('english')]
+        return ' '.join(tokens)
+
+    def get_ingredient_vectors(self, ingredients):
+        # Convert ingredients to vectors using spaCy
+        vectors = [self.nlp(ingredient).vector
+                   for ingredient in ingredients]
+        return np.array(vectors)
+
     def get_or_create_ingredient_node(self, ingredient_data):
         ingredient_name = ingredient_data['food']
-        ingredient_node = self.graph.nodes.match(
-            "Ingredient", name=ingredient_name).first()
-        if not ingredient_node:
-            ingredient_node = Node(
-                "Ingredient", name=ingredient_name,
-                category=ingredient_data['foodCategory'],
-                image=ingredient_data['image'])
-            self.graph.create(ingredient_node)
+        normalized_name = self.preprocess_ingredient(ingredient_name)
+
+        if normalized_name == '':
+            normalized_name = self.soft_preprocess_ingredient(
+                ingredient_name)
+            print(
+                f"Reverting to original {normalized_name}")
+
+        words = normalized_name.split()
+
+        # First, broad filter
+        # Check for ingredients in the same category OR with any common words
+        query = """
+        MATCH (i:Ingredient)
+        WHERE i.category = $category
+        AND any(word IN $normWords WHERE toLower(i.name) CONTAINS word)
+        RETURN i
+        """
+
+        existing_ingredients = self.graph.run(
+            query, normWords=words,
+            category=ingredient_data['foodCategory']).data()
+
+        # Then similarity metric filter
+        if existing_ingredients:
+            preprocessed_ex_ingredients = [
+                self.preprocess_ingredient(
+                    ex_ingredient['i']['name'])
+                for ex_ingredient in existing_ingredients]
+
+            existing_vectors = self.get_ingredient_vectors(
+                preprocessed_ex_ingredients)
+            new_vector = self.nlp(normalized_name).vector
+            similarity = cosine_similarity(
+                existing_vectors, [new_vector])
+            most_similar_score = np.max(similarity)
+
+            # Tuned to this score
+            if most_similar_score > 0.85:
+                most_similar = np.argmax(similarity)
+                ingredient_node = existing_ingredients[most_similar][
+                    'i']
+                # Checking sensitivity
+                if most_similar_score < 0.9:
+                    print(
+                        f"Deduped similar ingredient: {ingredient_name} -> {ingredient_node['name']}")
+                return ingredient_node
+
+        # Else create a new ingredient node
+        ingredient_node = Node(
+            "Ingredient",
+            name=normalized_name,
+            category=ingredient_data['foodCategory'],
+            image=ingredient_data['image'])
+        self.graph.create(ingredient_node)
 
         return ingredient_node
 
@@ -101,22 +203,32 @@ class GraphBuilder:
                 ingredient)
             self.create_relationships(recipe_node, ingredient_node)
 
-    def build_knowledge_graph(self):
-        cuisines = [
-            'American', 'Asian', 'British', 'Caribbean',
-            'Central Europe', 'Chinese', 'Eastern Europe', 'French',
-            'Indian', 'Italian', 'Japanese', 'Kosher', 'Mediterranean',
-            'Mexican', 'Middle Eastern', 'Nordic', 'South American',
-            'South East Asian']
+    def build_knowledge_graph_by_cuisine(self, cuisine):
+        recipes = self.search_recipes_by_cuisine(cuisine)
+        print(f"Found {len(recipes)} recipes for {cuisine}")
 
-        for cuisine in cuisines:
-            recipes = self.search_recipes_by_cuisine(cuisine)
-            print(f"Found {len(recipes)} recipes for {cuisine}")
+        for recipe in recipes:
+            print(
+                f"Building recipe node for {recipe['recipe']['label']}")
+            self.create_recipe_node_with_ingredients(recipe)
 
-            for recipe in recipes:
-                print(
-                    f"Building recipe node for {recipe['recipe']['label']}")
-                self.create_recipe_node_with_ingredients(recipe)
+    def build_knowledge_graph_by_ingredient(self, ingredient):
+        recipes = self.search_recipes_by_ingredient(ingredient)
+        print(f"Found {len(recipes)} recipes for {ingredient}")
+
+        for recipe in recipes:
+            print(
+                f"Building recipe node for {recipe['recipe']['label']}")
+            self.create_recipe_node_with_ingredients(recipe)
+
+
+def pretty_print_time(seconds):
+    if seconds < 60:
+        return f"{seconds} seconds"
+    elif seconds < 3600:
+        return f"{seconds / 60} minutes"
+    else:
+        return f"{seconds / 3600} hours"
 
 
 if __name__ == "__main__":
@@ -137,9 +249,65 @@ if __name__ == "__main__":
     result = graph_builder.graph.run(query).data()
     node_count = result[0]['nodeCount']
 
-    while node_count < 5000:
-        print(f"Current node count: {node_count}")
-        graph_builder.build_knowledge_graph()
-        result = graph_builder.graph.run(query).data()
-        node_count = result[0]['nodeCount']
-    print(f"Final node count: {node_count}")
+    # Initialize with base ingredients to avoid de-duping to edge cases
+    ingredients = [
+        # Vegetables
+        'onion', 'garlic', 'tomato', 'potato', 'carrot', 'bell pepper', 'spinach', 'broccoli', 'mushroom', 'zucchini',
+        'cucumber', 'celery', 'lettuce', 'cabbage', 'green beans', 'peas', 'corn', 'sweet potato', 'asparagus', 'kale',
+        'brussels sprouts', 'cauliflower', 'artichoke', 'beet', 'radish', 'turnip', 'eggplant', 'squash', 'pumpkin',
+        'okra', 'rhubarb', 'fennel', 'leek', 'shallot', 'scallion', 'chives', 'ginger', 'chili pepper', 'jalapeno',
+        # Fruits
+        'apple', 'banana', 'orange', 'strawberry', 'blueberry', 'lemon', 'lime', 'grape', 'watermelon', 'pineapple',
+        'mango', 'kiwi', 'peach', 'pear', 'raspberry', 'blackberry', 'avocado', 'cranberry', 'cherry', 'coconut',
+        'pomegranate', 'plum', 'fig', 'date', 'guava', 'papaya', 'passion fruit', 'lychee', 'dragonfruit', 'starfruit',
+        # Meat and Protein
+        'chicken', 'beef', 'pork', 'fish', 'shrimp', 'tofu', 'tempeh', 'lentils', 'beans', 'chickpeas', 'eggs',
+        'turkey', 'salmon', 'tuna', 'sausage', 'bacon', 'ham', 'steak', 'ground beef', 'pepperoni', 'crab',
+        'lobster', 'duck', 'lamb'
+        # Grains and Flours
+        'flour', 'rice', 'pasta', 'quinoa', 'oats', 'bread', 'barley', 'couscous', 'bulgur', 'cornmeal', 'wheat germ',
+        'breadcrumbs', 'polenta', 'farro', 'cereal', 'buckwheat', 'millet', 'amaranth', 'sorghum', 'spelt', 'teff',
+
+        # Dairy and Alternatives
+        'milk', 'cheese', 'yogurt', 'butter', 'cream', 'sour cream', 'cream cheese', 'cottage cheese', 'ricotta',
+        'goat cheese', 'cheddar', 'mozzarella', 'parmesan', 'feta', 'swiss cheese', 'almond milk', 'soy milk',
+        'coconut milk', 'cashew milk', 'oat milk', 'vegan cheese',
+        # Herbs and Spices
+        'salt', 'pepper', 'oregano', 'basil', 'parsley', 'thyme', 'rosemary', 'cumin', 'paprika', 'chili powder',
+        'cinnamon', 'nutmeg', 'ginger', 'coriander', 'garlic powder', 'onion powder', 'bay leaf', 'turmeric', 'sage',
+        'dill', 'mustard', 'cayenne', 'curry powder', 'cardamom', 'cloves', 'allspice', 'fennel', 'tarragon',
+    ]
+
+    import time
+    start = time.time()
+    for ingredient in ingredients:
+        lap = time.time()
+        graph_builder.build_knowledge_graph_by_ingredient(ingredient)
+        print(
+            f"Time to build {ingredient}: {pretty_print_time(time.time() - lap)}")
+    print(
+        f"Time to build the ingredient graph: {pretty_print_time(time.time() - start)}")
+
+    # print("Building the graph for diverse cuisines")
+
+    # cuisines = [
+    #     'American', 'Asian', 'British', 'Caribbean',
+    #     'Central Europe', 'Chinese', 'Eastern Europe', 'French',
+    #     'Indian', 'Italian', 'Japanese', 'Kosher', 'Mediterranean',
+    #     'Mexican', 'Middle Eastern', 'Nordic', 'South American',
+    #     'South East Asian']
+
+    # # Time this algorithm
+    # start = time.time()
+    # while node_count < 2000:
+    #     for cuisine in cuisines:
+    #         # get time to build each cuisine as a lap
+    #         lap = time.time()
+    #         graph_builder.build_knowledge_graph_by_cuisine(cuisine)
+    #         print(
+    #             f"Time to build {cuisine}: {pretty_print_time(time.time() - lap)}")
+    #     node_count = graph_builder.graph.run(query).data()[
+    #         0]['nodeCount']
+    #     print(f"Current node count: {node_count}")
+    # print(
+    #     f"Time to build the cuisine graph: {pretty_print_time(time.time() - start)}")

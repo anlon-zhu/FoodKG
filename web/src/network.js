@@ -5,6 +5,14 @@ export const graphNetwork = (parent, props) => {
         data,
     } = props;
 
+    if (!data) {
+        parent.selectAll("*").remove();
+        return;
+    }
+
+    let recipeRadius = 8;
+    let ingredientRadius = 25;
+
     let width = +parent.attr('width');
     let height = +parent.attr('height');
     const tooltipPadding = 15;
@@ -18,7 +26,7 @@ export const graphNetwork = (parent, props) => {
 
     let container = parent.selectAll(".container").data([null]);
     container = container.enter().append("g").attr("class", "container").merge(container);
-
+    
     // Set up parent container
     let links = container.selectAll(".links").data([data.links]);
     let nodes = container.selectAll(".nodes").data([data.nodes]);
@@ -29,7 +37,7 @@ export const graphNetwork = (parent, props) => {
 
     // Define the simulation
     const simulation = d3.forceSimulation(data.nodes)
-        .force("link", d3.forceLink(data.links).distance(25).strength(0.1).id(d => d.name))
+        .force("link", d3.forceLink(data.links).distance(30).strength(0.1).id(d => d.name))
         .force('chargeForce', d3.forceManyBody().strength(-10))
         .force("center", d3.forceCenter(width / 2, height / 2));
 
@@ -60,35 +68,29 @@ export const graphNetwork = (parent, props) => {
         .merge(node);
 
     // Append circles to represent nodes
-    newNode.append("circle")
-        .attr("r", d => d.type === 'ingredient' ? 25 : 7)
-        .attr("fill", d => d.type === 'ingredient' ? '#FFA177FF' : '#F5C7B8FF')
-        .merge(node)
-        ;
+    const circles = newNode.selectAll("circle") // Select circles within newNode
+    .data(d => [d]); // Bind data to circles
 
-    // Append text labels to ingredient nodes
-    const text = newNode.filter(d => d.type === 'ingredient')
-        .append("text")
-        .attr("text-anchor", "middle")
-        .text(d => d.name)
-        .merge(node);
+    circles.exit().remove(); // Remove circles that are not needed anymore
 
-    text.each(function(d) {
-            const text = d3.select(this);
-            const circleRadius = d.type === 'ingredient' ? 25 : 7;
-            const availableWidth = circleRadius * 2; // Double the circle radius to account for diameter
-            const availableHeight = circleRadius * 2; // Double the circle radius to account for diameter
-            const textWidth = this.getBBox().width;
-            const textHeight = this.getBBox().height;
-        
-            // Calculate the scale factor for font size
-            const scaleFactor = Math.min(availableWidth / textWidth, availableHeight / textHeight);
-        
-            // Apply the scale factor to adjust font size
-            const fontSize = Math.floor(12 * scaleFactor); // Adjust the base font size as needed
-            text.style("font-size", `${fontSize}px`);
-    });
-    
+    circles.enter().append("circle") // Append circles to newNode
+    .attr("class", "node-circle")
+    .attr("r", d => d.type === 'ingredient' ? ingredientRadius : recipeRadius)
+    .attr("fill", d => d.type === 'ingredient' ? '#dad2bc' : '#bcb8b1')
+    .merge(circles); // Merge enter and update selections
+
+    // Append text labels to ingredient nodes using foreignObject for text wrapping
+    const foreignText = newNode.filter(d => d.type === 'ingredient')
+    .append("foreignObject")
+    .attr("width", ingredientRadius * 1.5)
+    .attr("height", ingredientRadius * 1.5)
+    .attr("x", -(ingredientRadius * .75))
+    .attr("y", -(ingredientRadius *.75 ))
+    .merge(node);
+
+    foreignText.html(d => `
+        <div class="text-wrapper"><span>${d.name}</span></div>
+    `);
 
     // Define the tick function
     simulation.on("tick", ticked);
@@ -96,20 +98,69 @@ export const graphNetwork = (parent, props) => {
 
     // Tooltip
     newNode.on("mouseenter", (event, d) => {
-        d3.select("#tooltip")
-        .style("display", "block")
-        .html(`<div class="tooltip-title">${d.name}</div>`)
-        .style("left", (event.pageX + tooltipPadding) + "px")
-        .style("top", (event.pageY - tooltipPadding) + "px");
+        const circle = d3.select(event.currentTarget).select(".node-circle");
+
+        if (d.type === 'recipe') {
+            d3.select("#tooltip")
+            .style("display", "block")
+            .html(`<div class="tooltip-title">${d.name}</div>`)
+            .style("left", (event.pageX + tooltipPadding) + "px")
+            .style("top", (event.pageY - tooltipPadding) + "px");
+
+            circle
+                .transition()
+                .duration(300)
+                .attr("r", recipeRadius * 1.5)
+                .style("opacity", 0.7)
+                .style("fill", "#ff9800");
+
+            // Append a plus sign
+            d3.select(event.currentTarget).append("text")
+                .attr("class", "plus-sign")
+                .attr("x", 0)
+                .attr("y", 5)
+                .attr("text-anchor", "middle")
+                .attr("font-size", "16px")
+                .text("+")
+                .on("click", () => {
+                    // Handle click event, redirect to the node's URL
+                    window.open(d.url, "_blank");
+                });
+        } else {
+            circle
+                .transition()
+                .duration(300)
+                .attr("r", ingredientRadius * 1.25);
+        }
     })
     .on("mousemove", (event) => {
         d3.select("#tooltip")
         .style("left", (event.pageX + tooltipPadding) + "px")
         .style("top", (event.pageY - tooltipPadding) + "px");
     })
-    .on("mouseleave", () => {
-        d3.select("#tooltip")
-        .style("display", "none");
+    .on("mouseleave", (event, d) => {
+        const circle = d3.select(event.currentTarget).select(".node-circle");
+
+        if (d.type === 'recipe') {
+            d3.select("#tooltip")
+            .style("display", "none");
+    
+            // Restore node size                
+            circle.transition()
+                .duration(200)
+                .attr("r", recipeRadius)
+                .style("opacity", 1)
+                .style("fill", "#bcb8b1");
+        
+            // Remove the plus sign
+            d3.select(event.currentTarget).select(".plus-sign").remove();
+        }
+        else {
+            circle
+                .transition()
+                .duration(200)
+                .attr("r", ingredientRadius);
+        }
     });
 
     function ticked() {
@@ -125,7 +176,7 @@ export const graphNetwork = (parent, props) => {
 
     // Drag functions
     function dragstarted(event) {
-        if (!event.active) simulation.alphaTarget(0.4).restart();
+        if (!event.active) simulation.alphaTarget(0.3).restart();
         event.subject.fx = event.subject.x;
         event.subject.fy = event.subject.y;
     }
@@ -136,7 +187,7 @@ export const graphNetwork = (parent, props) => {
     }
 
     function dragended(event) {
-        if (!event.active) simulation.alphaTarget(0.1);
+        if (!event.active) simulation.alphaTarget(0.2).restart();
         event.subject.fx = null;
         event.subject.fy = null;
     }
