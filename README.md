@@ -1,10 +1,8 @@
-Here is a basic README template for your project:
-
----
 
 # Food Knowledge Graph API
 
 The Food Knowledge Graph API provides access to a database of ingredients and recipes. It allows users to retrieve information about recipes based on common ingredients.
+---
 
 ## Features
 
