@@ -18,7 +18,7 @@ BASE_URL = os.getenv("EDAMAM_BASE_URL")
 # Ensure you have the necessary NLTK data and spacy model
 # nltk.download('stopwords')
 # nltk.download('wordnet')
-# spacy.cli.download("en_core_web_md")
+# spacy.cli.download("en_core_web_sm")
 
 
 class GraphBuilder:
@@ -30,7 +30,8 @@ class GraphBuilder:
 
     def __init__(self, uri, user, password):
         self.graph = Graph(uri, auth=(user, password))
-        self.nlp = spacy.load("en_core_web_md")
+        self.nlp = spacy.load(
+            "en_core_web_sm", exclude=["ner", "textcat"])
 
     def search_recipes_by_ingredient(self, ingredient):
         endpoint = f'{BASE_URL}/'
@@ -64,10 +65,24 @@ class GraphBuilder:
         doc = self.nlp(ingredient)
         key_terms = []
 
-        # Extract nouns and proper nouns as they are likely to be key ingredients
+        # Define hard-coded allowable non-noun modifiers based on domain
+        allowable_modifiers = ["baking", "dried"]
+
+        # Extract any noun terms or compound nouns
         for token in doc:
-            if token.pos_ in ['NOUN', 'PROPN', 'VERB']:
+            if token.dep_ in [
+                    'compound', 'ROOT'] and (
+                    token.pos_ == 'NOUN' or token.pos_ == 'PROPN'):
                 key_terms.append(token.text)
+            # only include compound nouns or allowed modifiers
+            elif token.dep_ == 'amod':
+                if token.text in allowable_modifiers or self.nlp(
+                        token.text)[0].pos_ == 'NOUN':
+                    key_terms.append(token.text)
+
+        # If empty, return the original ingredient
+        if len(key_terms) == 0:
+            return ingredient
 
         # Returning a string that combines the key terms
         return ' '.join(key_terms)
@@ -79,22 +94,12 @@ class GraphBuilder:
         # Focus on key terms
         ingredient = self.extract_key_terms(ingredient)
 
-        # Tokenize and remove stopwords
-        tokens = [token for token in ingredient.split()
-                  if token not in stopwords.words('english')]
-        # Lemmatize
+        # Lemmatize to reduce words to their base form
         lemmatizer = WordNetLemmatizer()
-        lemmatized = [lemmatizer.lemmatize(token) for token in tokens]
+        lemmatized = [
+            lemmatizer.lemmatize(token)
+            for token in ingredient.split(' ')]
         return ' '.join(lemmatized)
-
-    def soft_preprocess_ingredient(self, ingredient):
-        # Normalize case
-        ingredient = ingredient.lower()
-
-        # Tokenize and remove stopwords
-        tokens = [token for token in ingredient.split()
-                  if token not in stopwords.words('english')]
-        return ' '.join(tokens)
 
     def get_ingredient_vectors(self, ingredients):
         # Convert ingredients to vectors using spaCy
@@ -105,21 +110,24 @@ class GraphBuilder:
     def get_or_create_ingredient_node(self, ingredient_data):
         ingredient_name = ingredient_data['food']
         normalized_name = self.preprocess_ingredient(ingredient_name)
-
-        if normalized_name == '':
-            normalized_name = self.soft_preprocess_ingredient(
-                ingredient_name)
-            print(
-                f"Reverting to original {normalized_name}")
-
         words = normalized_name.split()
 
-        # First, broad filter
-        # Check for ingredients in the same category OR with any common words
+        # First, check for exact match
         query = """
         MATCH (i:Ingredient)
-        WHERE i.category = $category
-        AND any(word IN $normWords WHERE toLower(i.name) CONTAINS word)
+        WHERE toLower(i.name) = $name
+        RETURN i
+        """
+        matching_ingredient = self.graph.run(
+            query, name=normalized_name).data()
+
+        if matching_ingredient:
+            return matching_ingredient[0]['i']
+
+        # Then, similarity match for ingredients with any common words
+        query = """
+        MATCH (i:Ingredient)
+        WHERE any(word IN $normWords WHERE toLower(i.name) CONTAINS word)
         RETURN i
         """
 
@@ -147,7 +155,7 @@ class GraphBuilder:
                 ingredient_node = existing_ingredients[most_similar][
                     'i']
                 # Checking sensitivity
-                if most_similar_score < 0.9:
+                if most_similar_score < 0.95:
                     print(
                         f"Deduped similar ingredient: {ingredient_name} -> {ingredient_node['name']}")
                 return ingredient_node
@@ -170,9 +178,10 @@ class GraphBuilder:
             url = recipe['url']
             try:
                 scraper = scrape_me(url, wild_mode=True)
+                instructions = scraper.instructions_list()
                 totalTime = scraper.total_time()
             except:
-                totalTime = None
+                return None
 
             recipe_node = Node(
                 "Recipe", name=recipe['label'],
@@ -180,28 +189,36 @@ class GraphBuilder:
                 image=recipe['image'],
                 cuisineType=recipe['cuisineType'],
                 totalTime=totalTime,
+                instructions=instructions,
             )
             self.graph.create(recipe_node)
         return recipe_node
 
-    def create_relationships(self, recipe_node, ingredient_node):
+    def create_relationships(
+            self, recipe_node, ingredient_node, quantity, measure):
         self.graph.create(
             Relationship(
                 recipe_node, "CONTAINS", ingredient_node,
-                quantity=ingredient_node['quantity'],
-                measure=ingredient_node['measure']))
+                quantity=quantity,
+                measure=measure))
         self.graph.create(
             Relationship(ingredient_node, "PART_OF", recipe_node,
-                         quantity=ingredient_node['quantity'],
-                         measure=ingredient_node['measure']))
+                         quantity=quantity,
+                         measure=measure))
 
     def create_recipe_node_with_ingredients(self, recipe_data):
         recipe_node = self.get_or_create_recipe_node(recipe_data)
+        # We only want recipe nodes with instructions
+        if not recipe_node:
+            return
 
         for ingredient in recipe_data['recipe']['ingredients']:
             ingredient_node = self.get_or_create_ingredient_node(
                 ingredient)
-            self.create_relationships(recipe_node, ingredient_node)
+            quantity = ingredient['quantity']
+            measure = ingredient['measure']
+            self.create_relationships(
+                recipe_node, ingredient_node, quantity, measure)
 
     def build_knowledge_graph_by_cuisine(self, cuisine):
         recipes = self.search_recipes_by_cuisine(cuisine)
@@ -251,6 +268,13 @@ if __name__ == "__main__":
 
     # Initialize with base ingredients to avoid de-duping to edge cases
     ingredients = [
+        # Meat and Protein
+        'chicken', 'beef', 'pork', 'fish', 'shrimp', 'tofu', 'tempeh', 'lentils', 'beans', 'chickpeas', 'eggs',
+        'turkey', 'salmon', 'tuna', 'sausage', 'bacon', 'ham', 'steak', 'ground beef', 'pepperoni', 'crab',
+        'lobster', 'duck', 'lamb'
+        # Grains and Flours
+        'flour', 'rice', 'pasta', 'quinoa', 'oats', 'bread', 'barley', 'couscous', 'bulgur', 'cornmeal', 'wheat germ',
+        'breadcrumbs', 'polenta', 'farro', 'cereal', 'buckwheat', 'millet', 'amaranth', 'sorghum', 'spelt', 'teff',
         # Vegetables
         'onion', 'garlic', 'tomato', 'potato', 'carrot', 'bell pepper', 'spinach', 'broccoli', 'mushroom', 'zucchini',
         'cucumber', 'celery', 'lettuce', 'cabbage', 'green beans', 'peas', 'corn', 'sweet potato', 'asparagus', 'kale',
@@ -260,14 +284,6 @@ if __name__ == "__main__":
         'apple', 'banana', 'orange', 'strawberry', 'blueberry', 'lemon', 'lime', 'grape', 'watermelon', 'pineapple',
         'mango', 'kiwi', 'peach', 'pear', 'raspberry', 'blackberry', 'avocado', 'cranberry', 'cherry', 'coconut',
         'pomegranate', 'plum', 'fig', 'date', 'guava', 'papaya', 'passion fruit', 'lychee', 'dragonfruit', 'starfruit',
-        # Meat and Protein
-        'chicken', 'beef', 'pork', 'fish', 'shrimp', 'tofu', 'tempeh', 'lentils', 'beans', 'chickpeas', 'eggs',
-        'turkey', 'salmon', 'tuna', 'sausage', 'bacon', 'ham', 'steak', 'ground beef', 'pepperoni', 'crab',
-        'lobster', 'duck', 'lamb'
-        # Grains and Flours
-        'flour', 'rice', 'pasta', 'quinoa', 'oats', 'bread', 'barley', 'couscous', 'bulgur', 'cornmeal', 'wheat germ',
-        'breadcrumbs', 'polenta', 'farro', 'cereal', 'buckwheat', 'millet', 'amaranth', 'sorghum', 'spelt', 'teff',
-
         # Dairy and Alternatives
         'milk', 'cheese', 'yogurt', 'butter', 'cream', 'sour cream', 'cream cheese', 'cottage cheese', 'ricotta',
         'goat cheese', 'cheddar', 'mozzarella', 'parmesan', 'feta', 'swiss cheese', 'almond milk', 'soy milk',

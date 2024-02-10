@@ -205,15 +205,38 @@ class IngredientListByRecipe(Resource):
     def get(self, id):
         db = get_db()
         results = db.read_transaction(
-            lambda tx: list(tx.run(
+            lambda tx: tx.run(
                 '''
-                MATCH (r:Recipe)-[:CONTAINS]->(i:Ingredient)
-                WHERE id(r) = $id
-                RETURN ID(i) as id, i.name as name, i.category as category, i.image as image
-                ''', id=id)))
+                MATCH c=(r:Recipe)-[:CONTAINS]->(i:Ingredient)
+                WHERE ID(r) = $id
+                RETURN c
+                ''', id=id).data())
+
+        if not results:
+            return {'message': 'Recipe not found'}, 404
+
+        recipe = results[0]['c'][0]['name']
+        ingredient_list = []
+
         if results:
-            return [serializeIngredient(record) for record in results]
-        return {'message': 'Recipe not found'}, 404
+            for item in results:
+                c_array = item['c']
+
+                # Extract node and relationship information
+                if c_array[0]['name'] != recipe:
+                    return {'message': 'Multiple recipes found'}, 500
+                relationship = c_array[1]
+                ingredient = c_array[2]
+
+                link = {'ingredient': ingredient,
+                        'relationship': relationship}
+
+                # Add nodes to nodeItemMap if not already present
+                ingredient_list.append(link)
+
+        return {
+            'ingredient_list': ingredient_list
+        }
 
 
 class RecipeList(Resource):
@@ -263,7 +286,7 @@ class RecipesByMultipleIngredients(Resource):
         query = """
         MATCH p=(ingredient:Ingredient)-[:PART_OF]->(recipe:Recipe)
         WHERE ID(ingredient) in $ingredientIds
-        RETURN p
+        RETURN ID(recipe), p
         """
         result = db.read_transaction(lambda tx: tx.run(
             query, ingredientIds=ingredient_ids).data())
@@ -272,6 +295,7 @@ class RecipesByMultipleIngredients(Resource):
         link_item_map = {}
 
         for item in result:
+            id = item['ID(recipe)']
             p_array = item['p']
 
             # Extract node and relationship information
@@ -285,6 +309,7 @@ class RecipesByMultipleIngredients(Resource):
                 node_item_map[ingredient['name']] = ingredient
             if recipe['name'] not in node_item_map:
                 recipe['type'] = 'recipe'
+                recipe['id'] = id
                 node_item_map[recipe['name']] = recipe
 
             # Add relationship to linkItemMap

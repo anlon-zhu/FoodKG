@@ -1,8 +1,9 @@
 import * as d3 from "d3";
 
-export const graphNetwork = (parent, props) => {
+function GraphNetwork (parent, props) {
     const {
         data,
+        handleOpenModal,
     } = props;
 
     if (!data) {
@@ -122,9 +123,12 @@ export const graphNetwork = (parent, props) => {
                 .attr("text-anchor", "middle")
                 .attr("font-size", "16px")
                 .text("+")
-                .on("click", () => {
-                    // Handle click event, redirect to the node's URL
-                    window.open(d.url, "_blank");
+                // .on("click", () => {
+                //     // Handle click event, redirect to the node's URL
+                //     window.open(d.url, "_blank");
+                // });
+                .on("click", (event, d) => {
+                    handleOpenModal(d);
                 });
         } else {
             circle
@@ -215,3 +219,5 @@ export const graphNetwork = (parent, props) => {
 
     return parent;
 }
+
+export default GraphNetwork;
