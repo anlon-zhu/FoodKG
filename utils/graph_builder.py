@@ -266,45 +266,45 @@ if __name__ == "__main__":
     result = graph_builder.graph.run(query).data()
     node_count = result[0]['nodeCount']
 
-    # Initialize with base ingredients to avoid de-duping to edge cases
-    ingredients = [
-        # Meat and Protein
-        'chicken', 'beef', 'pork', 'fish', 'shrimp', 'tofu', 'tempeh', 'lentils', 'beans', 'chickpeas', 'eggs',
-        'turkey', 'salmon', 'tuna', 'sausage', 'bacon', 'ham', 'steak', 'ground beef', 'pepperoni', 'crab',
-        'lobster', 'duck', 'lamb'
-        # Grains and Flours
-        'flour', 'rice', 'pasta', 'quinoa', 'oats', 'bread', 'barley', 'couscous', 'bulgur', 'cornmeal', 'wheat germ',
-        'breadcrumbs', 'polenta', 'farro', 'cereal', 'buckwheat', 'millet', 'amaranth', 'sorghum', 'spelt', 'teff',
-        # Vegetables
-        'onion', 'garlic', 'tomato', 'potato', 'carrot', 'bell pepper', 'spinach', 'broccoli', 'mushroom', 'zucchini',
-        'cucumber', 'celery', 'lettuce', 'cabbage', 'green beans', 'peas', 'corn', 'sweet potato', 'asparagus', 'kale',
-        'brussels sprouts', 'cauliflower', 'artichoke', 'beet', 'radish', 'turnip', 'eggplant', 'squash', 'pumpkin',
-        'okra', 'rhubarb', 'fennel', 'leek', 'shallot', 'scallion', 'chives', 'ginger', 'chili pepper', 'jalapeno',
-        # Fruits
-        'apple', 'banana', 'orange', 'strawberry', 'blueberry', 'lemon', 'lime', 'grape', 'watermelon', 'pineapple',
-        'mango', 'kiwi', 'peach', 'pear', 'raspberry', 'blackberry', 'avocado', 'cranberry', 'cherry', 'coconut',
-        'pomegranate', 'plum', 'fig', 'date', 'guava', 'papaya', 'passion fruit', 'lychee', 'dragonfruit', 'starfruit',
-        # Dairy and Alternatives
-        'milk', 'cheese', 'yogurt', 'butter', 'cream', 'sour cream', 'cream cheese', 'cottage cheese', 'ricotta',
-        'goat cheese', 'cheddar', 'mozzarella', 'parmesan', 'feta', 'swiss cheese', 'almond milk', 'soy milk',
-        'coconut milk', 'cashew milk', 'oat milk', 'vegan cheese',
-        # Herbs and Spices
-        'salt', 'pepper', 'oregano', 'basil', 'parsley', 'thyme', 'rosemary', 'cumin', 'paprika', 'chili powder',
-        'cinnamon', 'nutmeg', 'ginger', 'coriander', 'garlic powder', 'onion powder', 'bay leaf', 'turmeric', 'sage',
-        'dill', 'mustard', 'cayenne', 'curry powder', 'cardamom', 'cloves', 'allspice', 'fennel', 'tarragon',
-    ]
+    # # Initialize with base ingredients to avoid de-duping to edge cases
+    # ingredients = [
+    #     # Meat and Protein
+    #     'chicken', 'beef', 'pork', 'fish', 'shrimp', 'tofu', 'tempeh', 'lentils', 'beans', 'chickpeas', 'eggs',
+    #     'turkey', 'salmon', 'tuna', 'sausage', 'bacon', 'ham', 'steak', 'ground beef', 'pepperoni', 'crab',
+    #     'lobster', 'duck', 'lamb'
+    #     # Grains and Flours
+    #     'flour', 'rice', 'pasta', 'quinoa', 'oats', 'bread', 'barley', 'couscous', 'bulgur', 'cornmeal', 'wheat germ',
+    #     'breadcrumbs', 'polenta', 'farro', 'cereal', 'buckwheat', 'millet', 'amaranth', 'sorghum', 'spelt', 'teff',
+    #     # Vegetables
+    #     'onion', 'garlic', 'tomato', 'potato', 'carrot', 'bell pepper', 'spinach', 'broccoli', 'mushroom', 'zucchini',
+    #     'cucumber', 'celery', 'lettuce', 'cabbage', 'green beans', 'peas', 'corn', 'sweet potato', 'asparagus', 'kale',
+    #     'brussels sprouts', 'cauliflower', 'artichoke', 'beet', 'radish', 'turnip', 'eggplant', 'squash', 'pumpkin',
+    #     'okra', 'rhubarb', 'fennel', 'leek', 'shallot', 'scallion', 'chives', 'ginger', 'chili pepper', 'jalapeno',
+    #     # Fruits
+    #     'apple', 'banana', 'orange', 'strawberry', 'blueberry', 'lemon', 'lime', 'grape', 'watermelon', 'pineapple',
+    #     'mango', 'kiwi', 'peach', 'pear', 'raspberry', 'blackberry', 'avocado', 'cranberry', 'cherry', 'coconut',
+    #     'pomegranate', 'plum', 'fig', 'date', 'guava', 'papaya', 'passion fruit', 'lychee', 'dragonfruit', 'starfruit',
+    #     # Dairy and Alternatives
+    #     'milk', 'cheese', 'yogurt', 'butter', 'cream', 'sour cream', 'cream cheese', 'cottage cheese', 'ricotta',
+    #     'goat cheese', 'cheddar', 'mozzarella', 'parmesan', 'feta', 'swiss cheese', 'almond milk', 'soy milk',
+    #     'coconut milk', 'cashew milk', 'oat milk', 'vegan cheese',
+    #     # Herbs and Spices
+    #     'salt', 'pepper', 'oregano', 'basil', 'parsley', 'thyme', 'rosemary', 'cumin', 'paprika', 'chili powder',
+    #     'cinnamon', 'nutmeg', 'ginger', 'coriander', 'garlic powder', 'onion powder', 'bay leaf', 'turmeric', 'sage',
+    #     'dill', 'mustard', 'cayenne', 'curry powder', 'cardamom', 'cloves', 'allspice', 'fennel', 'tarragon',
+    # ]
 
     import time
-    start = time.time()
-    for ingredient in ingredients:
-        lap = time.time()
-        graph_builder.build_knowledge_graph_by_ingredient(ingredient)
-        print(
-            f"Time to build {ingredient}: {pretty_print_time(time.time() - lap)}")
-    print(
-        f"Time to build the ingredient graph: {pretty_print_time(time.time() - start)}")
+    # start = time.time()
+    # for ingredient in ingredients:
+    #     lap = time.time()
+    #     graph_builder.build_knowledge_graph_by_ingredient(ingredient)
+    #     print(
+    #         f"Time to build {ingredient}: {pretty_print_time(time.time() - lap)}")
+    # print(
+    #     f"Time to build the ingredient graph: {pretty_print_time(time.time() - start)}")
 
-    # print("Building the graph for diverse cuisines")
+    print("Building the graph for diverse cuisines")
 
     # cuisines = [
     #     'American', 'Asian', 'British', 'Caribbean',
@@ -312,18 +312,19 @@ if __name__ == "__main__":
     #     'Indian', 'Italian', 'Japanese', 'Kosher', 'Mediterranean',
     #     'Mexican', 'Middle Eastern', 'Nordic', 'South American',
     #     'South East Asian']
+    cuisines = ['Asian', 'Chinese', 'Japanese', 'South East Asian']
 
-    # # Time this algorithm
-    # start = time.time()
-    # while node_count < 2000:
-    #     for cuisine in cuisines:
-    #         # get time to build each cuisine as a lap
-    #         lap = time.time()
-    #         graph_builder.build_knowledge_graph_by_cuisine(cuisine)
-    #         print(
-    #             f"Time to build {cuisine}: {pretty_print_time(time.time() - lap)}")
-    #     node_count = graph_builder.graph.run(query).data()[
-    #         0]['nodeCount']
-    #     print(f"Current node count: {node_count}")
-    # print(
-    #     f"Time to build the cuisine graph: {pretty_print_time(time.time() - start)}")
+    # Time this algorithm
+    start = time.time()
+    while node_count < 3000:
+        for cuisine in cuisines:
+            # get time to build each cuisine as a lap
+            lap = time.time()
+            graph_builder.build_knowledge_graph_by_cuisine(cuisine)
+            print(
+                f"Time to build {cuisine}: {pretty_print_time(time.time() - lap)}")
+        node_count = graph_builder.graph.run(query).data()[
+            0]['nodeCount']
+        print(f"Current node count: {node_count}")
+    print(
+        f"Time to build the cuisine graph: {pretty_print_time(time.time() - start)}")
