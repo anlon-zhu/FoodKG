@@ -5,7 +5,7 @@ FROM python:3.8-slim
 WORKDIR /flask-api
 
 # Copy the requirements file into the container
-COPY ./flask-api/requirements.txt .
+COPY requirements.txt .
 
 # Install the required Python packages
 RUN pip install -r requirements.txt
