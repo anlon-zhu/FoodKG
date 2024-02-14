@@ -42,6 +42,16 @@ const RecipeModal = ({ open, handleClose, recipeNode }) => {
                     closestFraction.denominator = denominator;
                 }
             }
+            // convert improper fractions to mixed numbers
+            if (closestFraction.numerator > closestFraction.denominator) {
+                let wholeNumber = Math.floor(closestFraction.numerator / closestFraction.denominator);
+                closestFraction.numerator = closestFraction.numerator % closestFraction.denominator;
+                return (
+                    <>
+                    {wholeNumber} <sup>{closestFraction.numerator}</sup>&frasl;<sub>{closestFraction.denominator}</sub>
+                    </>);
+            }
+
             return (
             <>
             <sup>{closestFraction.numerator}</sup>&frasl;<sub>{closestFraction.denominator}</sub>

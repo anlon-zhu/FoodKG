@@ -1,0 +1,12 @@
+services:
+  - name: flask-api
+    type: web
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python app.py"
+    env: python
+
+  - name: web
+    type: web
+    buildCommand: "npm install && npm run build"
+    startCommand: "npm start"
+    env: node

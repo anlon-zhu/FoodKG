@@ -306,17 +306,16 @@ if __name__ == "__main__":
 
     print("Building the graph for diverse cuisines")
 
-    # cuisines = [
-    #     'American', 'Asian', 'British', 'Caribbean',
-    #     'Central Europe', 'Chinese', 'Eastern Europe', 'French',
-    #     'Indian', 'Italian', 'Japanese', 'Kosher', 'Mediterranean',
-    #     'Mexican', 'Middle Eastern', 'Nordic', 'South American',
-    #     'South East Asian']
-    cuisines = ['Asian', 'Chinese', 'Japanese', 'South East Asian']
+    cuisines = ['Asian', 'Chinese', 'Japanese', 'South East Asian'] + [
+        'American', 'Asian', 'British', 'Caribbean',
+        'Central Europe', 'Chinese', 'Eastern Europe', 'French',
+        'Indian', 'Italian', 'Japanese', 'Kosher', 'Mediterranean',
+        'Mexican', 'Middle Eastern', 'Nordic', 'South American',
+        'South East Asian']
 
     # Time this algorithm
     start = time.time()
-    while node_count < 3000:
+    while node_count < 6000:
         for cuisine in cuisines:
             # get time to build each cuisine as a lap
             lap = time.time()
