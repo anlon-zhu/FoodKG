@@ -4,4 +4,6 @@ Flask-JSON==0.3.4
 Flask-RESTful==0.3.10
 flask-restful-swagger-2==0.35
 neo4j==4.1.1
+blinker==1.4
+gunicorn==20.1.0
 python-dotenv==0.14.0
