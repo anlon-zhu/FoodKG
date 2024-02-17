@@ -21,43 +21,7 @@ const RecipeModal = ({ open, handleClose, recipeNode }) => {
         }
 
         return timeString;
-    }
-
-    const makePrettyQuantity = (quantity) => {
-        // Sometimes no quantity
-        if (quantity === 0) {
-            return '';
-        }
-        // If quantity is a whole number, return it as an integer
-        if (quantity % 1 === 0) {
-            return Number(quantity).toFixed(0);
-        } else
-        // Get closest fraction to the decimal
-        {
-            let closestFraction = { numerator: 0, denominator: 1 };
-            for (let denominator = 1; denominator <= 64; denominator++) {
-                let numerator = Math.round(quantity * denominator);
-                if (Math.abs(quantity - numerator / denominator) < Math.abs(quantity - closestFraction.numerator / closestFraction.denominator)) {
-                    closestFraction.numerator = numerator;
-                    closestFraction.denominator = denominator;
-                }
-            }
-            // convert improper fractions to mixed numbers
-            if (closestFraction.numerator > closestFraction.denominator) {
-                let wholeNumber = Math.floor(closestFraction.numerator / closestFraction.denominator);
-                closestFraction.numerator = closestFraction.numerator % closestFraction.denominator;
-                return (
-                    <>
-                    {wholeNumber} <sup>{closestFraction.numerator}</sup>&frasl;<sub>{closestFraction.denominator}</sub>
-                    </>);
-            }
-
-            return (
-            <>
-            <sup>{closestFraction.numerator}</sup>&frasl;<sub>{closestFraction.denominator}</sub>
-            </>);
-        }
-    }
+    };
 
     return (
         <Modal
@@ -111,7 +75,7 @@ const RecipeModal = ({ open, handleClose, recipeNode }) => {
                     </Box>
                     </Box>
                     <Box flexBasis="70%" ml={4}>
-                        {recipeNode.ingredients && recipeNode.ingredients.length > 0 ? (
+                        {recipeNode.ingredient_quantities && recipeNode.ingredient_quantities.length > 0 ? (
                             <>
                                 <Typography variant="body1" fontWeight={600}>
                                     <Fastfood sx={{ color: '#ff9800', fontSize: 20, verticalAlign: 'bottom', mr: 1 }} />
@@ -119,9 +83,9 @@ const RecipeModal = ({ open, handleClose, recipeNode }) => {
                                 </Typography>
                                 <Box overflow="auto">
                                     <List sx={{ listStyleType: 'disc', pl: 6 }}>
-                                        {recipeNode.ingredients.map((item, index) => (
+                                        {recipeNode.ingredient_quantities.map((item, index) => (
                                             <ListItem key={index} sx={{ display: 'list-item', marginBottom: 1 }}>
-                                                {makePrettyQuantity(item.relationship.quantity)} {item.relationship.measure} {item.ingredient.name}
+                                                {item}
                                             </ListItem>
                                         ))}
                                     </List>

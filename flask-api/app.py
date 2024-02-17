@@ -207,37 +207,15 @@ class IngredientListByRecipe(Resource):
         results = db.read_transaction(
             lambda tx: tx.run(
                 '''
-                MATCH c=(r:Recipe)-[rel:CONTAINS]->(i:Ingredient)
+                MATCH (r:Recipe)
                 WHERE ID(r) = $id
-                RETURN c, rel.quantity AS quantity, rel.measure AS measure
+                RETURN r.name as name, r.ingredient_quantities as ingredient_quantities, r.link as link
                 ''', id=id).data())
 
         if not results:
             return {'message': 'Recipe not found'}, 404
 
-        recipe = results[0]['c'][0]['name']
-        ingredient_list = []
-
-        if results:
-            for item in results:
-                c_array = item['c']
-                quantity = item['quantity']
-                measure = item['measure']
-
-                # Extract node and relationship information
-                if c_array[0]['name'] != recipe:
-                    return {'message': 'Multiple recipes found'}, 500
-                relationship = {}
-                relationship['quantity'] = quantity
-                relationship['measure'] = measure if measure != '<unit>' else ''
-                ingredient = c_array[2]
-
-                link = {'ingredient': ingredient,
-                        'relationship': relationship}
-
-                # Add nodes to nodeItemMap if not already present
-                ingredient_list.append(link)
-
+        ingredient_list = results[0]['ingredient_quantities']
         return {
             'ingredient_list': ingredient_list
         }

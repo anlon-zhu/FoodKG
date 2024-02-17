@@ -63,17 +63,8 @@ function App() {
   }, [svg, graphData, modalOpen, recipeNode]);
 
   const handleOpenModal = (recipeNode) => {
-    let recipeId = recipeNode.id;
-    axios.get('http://localhost:5000/recipes/' + recipeId + '/ingredients')
-      .then(response => {
-        console.log('Recipe ingredients:', response.data['ingredient_list'])
-        recipeNode.ingredients = response.data['ingredient_list'];
-        setRecipeNode(recipeNode);
-        setModalOpen(true);
-      })
-      .catch(error => {
-        console.error('Error fetching ingredient data:', error);
-      });
+      setRecipeNode(recipeNode);
+      setModalOpen(true);
   };
 
   const handleCloseModal = () => {
