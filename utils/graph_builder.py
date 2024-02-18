@@ -73,7 +73,7 @@ class GraphBuilder:
             for token in ingredient.split(' ')]
         return ' '.join(lemmatized)
 
-    def get_similarity_score(word1, word2):
+    def calculate_similarity(self, word1, word2):
         # Tokenize the input words and generate phrases
         tokens_word1 = word1.split()
         tokens_word2 = word2.split()
