@@ -287,7 +287,7 @@ if __name__ == "__main__":
          'breadcrumbs', 'polenta', 'farro', 'cereal', 'buckwheat',
          'millet', 'amaranth', 'sorghum', 'spelt', 'teff'],
         'Vegetables':
-        ['green onion', 'onion', 'garlic', 'tomato', 'potato', 'carrot',
+        ['spring onion', 'onion', 'garlic', 'tomato', 'potato', 'carrot',
          'bell pepper', 'spinach', 'broccoli', 'mushroom', 'zucchini',
          'cucumber', 'celery', 'lettuce', 'cabbage', 'green beans',
          'peas', 'corn', 'sweet potato', 'asparagus', 'kale',
@@ -316,7 +316,7 @@ if __name__ == "__main__":
          'mustard', 'cayenne', 'curry powder', 'cardamom', 'cloves',
          'allspice', 'fennel', 'tarragon'],
         'Sauces':
-        ['soy sauce', 'vinegar', 'black vinegar', 'fish sauce',
+        ['soy sauce', 'vinegar', 'black vinegar', 'rice vinegar', 'fish sauce',
          'Worcestershire sauce', 'teriyaki sauce', 'hot sauce',
          'barbecue sauce', 'ketchup', 'mayonnaise', 'mustard', 'relish',
          'salsa', 'tahini', 'hoisin sauce', 'sriracha'],

@@ -27,6 +27,7 @@ def get_similarity_score(word1, word2):
                 similarity_scores.append(1)
             elif token1 in model.wv.key_to_index and token2 in model.wv.key_to_index:
                 similarity_score = model.wv.similarity(token1, token2)
+                print(token1, token2, similarity_score)
                 similarity_scores.append(similarity_score)
             else:
                 continue
@@ -54,35 +55,36 @@ word_pairs = [
     ("light soy sauce", "soy sauce"),
     ("chicken breast", "chicken thigh"),
     ("reduced-sodium soy sauce", "soy sauce"),
-    ("tomato", "tomato sauce"),
-    ("tomato", "tomato paste"),
-    ("tomato", "tomato ketchup"),
-    ("tomato", "tomato juice"),
-    ("tomato", "tomato puree"),
-    ("diced tomatoes", "tomato soup"),
-    ("tomato sauce ", "tomato paste"),
-    ("dried oregano", "fresh oregano"),
-    ("chicken broth", "chicken stock"),
-    ("ground beef", "ground turkey"),
-    ("whole milk", "skim milk"),
-    ("olive oil", "vegetable oil"),
-    ("white sugar", "brown sugar"),
-    ("all-purpose flour", "whole wheat flour"),
-    ("parmesan cheese", "pecorino romano cheese"),
-    ("white rice", "brown rice"),
-    ("lemon juice", "lime juice"),
-    ("honey", "maple syrup"),
-    ("cilantro", "parsley"),
-    ("red onion", "yellow onion"),
-    ("bell pepper", "jalapeno pepper"),
-    ("dark chocolate", "milk chocolate"),
-    ("basil leaves", "mint leaves"),
-    ("ground cinnamon", "ground nutmeg"),
-    ("ground black pepper", "white pepper"),
-    ("balsamic vinegar", "red wine vinegar"),
-    ("chicken sausage", "pork sausage"),
-    ("baby spinach", "arugula"),
-    ("cottage cheese", "ricotta cheese")
+    ("low-sodium soy sauce", "soy sauce"),
+    # ("tomato", "tomato sauce"),
+    # ("tomato", "tomato paste"),
+    # ("tomato", "tomato ketchup"),
+    # ("tomato", "tomato juice"),
+    # ("tomato", "tomato puree"),
+    # ("diced tomatoes", "tomato soup"),
+    # ("tomato sauce ", "tomato paste"),
+    # ("dried oregano", "fresh oregano"),
+    # ("chicken broth", "chicken stock"),
+    # ("ground beef", "ground turkey"),
+    # ("whole milk", "skim milk"),
+    # ("olive oil", "vegetable oil"),
+    # ("white sugar", "brown sugar"),
+    # ("all-purpose flour", "whole wheat flour"),
+    # ("parmesan cheese", "pecorino romano cheese"),
+    # ("white rice", "brown rice"),
+    # ("lemon juice", "lime juice"),
+    # ("honey", "maple syrup"),
+    # ("cilantro", "parsley"),
+    # ("red onion", "yellow onion"),
+    # ("bell pepper", "jalapeno pepper"),
+    # ("dark chocolate", "milk chocolate"),
+    # ("basil leaves", "mint leaves"),
+    # ("ground cinnamon", "ground nutmeg"),
+    # ("ground black pepper", "white pepper"),
+    # ("balsamic vinegar", "red wine vinegar"),
+    # ("chicken sausage", "pork sausage"),
+    # ("baby spinach", "arugula"),
+    # ("cottage cheese", "ricotta cheese")
 ]
 
 averages = []

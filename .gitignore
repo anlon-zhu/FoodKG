@@ -3,3 +3,4 @@ utils/dataset
 utils/similarity_matrix/**.csv
 **/train_data/
 **.model
+**.txt
