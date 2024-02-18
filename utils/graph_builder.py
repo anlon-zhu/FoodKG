@@ -34,6 +34,8 @@ class GraphBuilder:
         self.graph = Graph(uri, auth=(user, password))
         self.nlp = spacy.load(
             "en_core_web_sm", exclude=["ner", "textcat"])
+        self.avoided_dedupes = []
+        self.dodgy_dedupes = []
 
     def search_recipes_by_ingredient(self, ingredient):
         endpoint = f'{BASE_URL}/'
@@ -140,19 +142,21 @@ class GraphBuilder:
             most_similar_score = np.max(similarity)
             most_similar = np.argmax(similarity)
 
-            # Tuned to this score
-            if most_similar_score > 0.85:
+            # Hyperparameter that is manually tuned
+            if most_similar_score > 0.87:
                 ingredient_node = existing_ingredients[most_similar][
                     'i']
-                # Checking sensitivity
+                # Conditional check for tuning sensitivity
                 if most_similar_score < 0.95:
+                    self.dodgy_dedupes.append(
+                        (ingredient_name, ingredient_node['name']))
                     print(
                         f"Deduped similar ingredient: {ingredient_name} -> {ingredient_node['name']}")
                 return ingredient_node
-            # Checking sensitivity
-            elif most_similar_score > 0.75:
-                print(
-                    f"Failed to dedupe similar ingredient: {ingredient_name} -> {existing_ingredients[most_similar]['i']['name']}")
+            # Conditional check for tuning specificity
+            elif most_similar_score > 0.8:
+                self.avoided_dedupes.append(
+                    (ingredient_name, existing_ingredients[most_similar]['i']['name']))
         # Else create a new ingredient node
         ingredient_node = Node(
             "Ingredient",
@@ -306,8 +310,8 @@ if __name__ == "__main__":
          'oat milk', 'vegan cheese'],
         'Herbs and Spices':
         ['salt', 'pepper', 'oregano', 'basil', 'parsley', 'thyme',
-         'rosemary', 'cumin', 'paprika', 'chili powder', 'cinnamon',
-         'nutmeg', 'ginger', 'coriander', 'garlic powder',
+         'sesame seeds', 'rosemary', 'cumin', 'paprika', 'chili powder',
+         'cinnamon', 'nutmeg', 'ginger', 'coriander', 'garlic powder',
          'onion powder', 'bay leaf', 'turmeric', 'sage', 'dill',
          'mustard', 'cayenne', 'curry powder', 'cardamom', 'cloves',
          'allspice', 'fennel', 'tarragon'],
@@ -316,7 +320,7 @@ if __name__ == "__main__":
          'Worcestershire sauce', 'teriyaki sauce', 'hot sauce',
          'barbecue sauce', 'ketchup', 'mayonnaise', 'mustard', 'relish',
          'salsa', 'tahini', 'hoisin sauce', 'sriracha'],
-        'Oils': ['vegetable oil', 'olive oil', 'coconut oil', 'sesame oil'],
+        'Oils': ['oil', 'olive oil', 'coconut oil', 'sesame oil'],
         'Nuts':
         ['peanut butter', 'almonds', 'walnuts', 'cashews', 'peanuts',
          'pecans', 'pistachios', 'macadamia nuts', 'hazelnuts',
@@ -366,3 +370,11 @@ if __name__ == "__main__":
     print(f"Current node count: {node_count}")
     print(
         f"Time to build the cuisine graph: {pretty_print_time(time.time() - start)}")
+
+    # Write the avoided and dodgy dedupes to a file
+    with open("dodgy_dedupes.txt", "w") as file:
+        for ingredient in graph_builder.dodgy_dedupes:
+            file.write(f"{ingredient[0]} -> {ingredient[1]}\n")
+    with open("avoided_dedupes.txt", "w") as file:
+        for ingredient in graph_builder.avoided_dedupes:
+            file.write(f"{ingredient[0]} -> {ingredient[1]}\n")

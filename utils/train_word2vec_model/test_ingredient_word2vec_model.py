@@ -49,6 +49,9 @@ def preprocess_ingredient(ingredient):
 # Main test
 # Example of word similarity evaluation
 word_pairs = [
+    ("salt", "sea salt"),
+    ("light soy sauce", "fish sauce"),
+    ("light soy sauce", "soy sauce"),
     ("chicken breast", "chicken thigh"),
     ("reduced-sodium soy sauce", "soy sauce"),
     ("tomato", "tomato sauce"),
