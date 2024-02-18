@@ -120,12 +120,9 @@ class IngredientModel(Schema):
         },
         'category': {
             'type': 'string'
-        },
-        'image': {
-            'type': 'string'
         }
     }
-    required = ['name', 'category', 'image']
+    required = ['name', 'category']
 
 
 class RecipeModel(Schema):
@@ -151,7 +148,6 @@ def serializeIngredient(ingredient):
         'id': ingredient['id'],
         'name': ingredient['name'],
         'category': ingredient['category'],
-        'image': ingredient['image']
     }
 
 
@@ -185,7 +181,7 @@ class IngredientList(Resource):
     def get(self):
         db = get_db()
         results = db.read_transaction(lambda tx: list(tx.run(
-            'MATCH (i:Ingredient) RETURN ID(i) as id, i.name as name, i.category as category, i.image as image')))
+            'MATCH (i:Ingredient) RETURN ID(i) as id, i.name as name, i.category as category')))
         return [serializeIngredient(record) for record in results]
 
 
@@ -194,7 +190,7 @@ class Ingredient(Resource):
         db = get_db()
         result = db.read_transaction(
             lambda tx: tx.run(
-                'MATCH (i:Ingredient) WHERE id(i) = $id RETURN ID(i) as id, i.name as name, i.category as category, i.image as image',
+                'MATCH (i:Ingredient) WHERE id(i) = $id RETURN ID(i) as id, i.name as name, i.category as category',
                 id=id).single())
         if result:
             return serializeIngredient(result)
