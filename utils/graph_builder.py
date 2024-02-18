@@ -3,22 +3,24 @@ from py2neo import Graph, Node, Relationship
 from recipe_scrapers import scrape_me
 import requests
 from dotenv import load_dotenv
-import nltk
-from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import spacy
-from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+from gensim.models import Word2Vec
+from gensim.models.phrases import Phrases, Phraser
+
+import time
 
 load_dotenv()
 APP_ID = os.getenv("EDAMAM_APP_ID")
 APP_KEY = os.getenv("EDAMAM_APP_KEY")
 BASE_URL = os.getenv("EDAMAM_BASE_URL")
 
-# Ensure you have the necessary NLTK data and spacy model
-# nltk.download('stopwords')
-# nltk.download('wordnet')
-# spacy.cli.download("en_core_web_sm")
+
+# Load your Word2Vec model
+model = Word2Vec.load("phrases_ingredient_word2vec.model")
+phrase_model = Phraser.load("phrase_model.txt")
+print("Model loaded successfully")
 
 
 class GraphBuilder:
@@ -60,39 +62,9 @@ class GraphBuilder:
 
         return data.get('hits', [])
 
-    def extract_key_terms(self, ingredient):
-        # Process the ingredient name with spaCy
-        doc = self.nlp(ingredient)
-        key_terms = []
-
-        # Define hard-coded allowable non-noun modifiers based on domain
-        allowable_modifiers = ["baking", "dried"]
-
-        # Extract any noun terms or compound nouns
-        for token in doc:
-            if token.dep_ in [
-                    'compound', 'ROOT'] and (
-                    token.pos_ == 'NOUN' or token.pos_ == 'PROPN'):
-                key_terms.append(token.text)
-            # only include compound nouns or allowed modifiers
-            elif token.dep_ == 'amod':
-                if token.text in allowable_modifiers or self.nlp(
-                        token.text)[0].pos_ == 'NOUN':
-                    key_terms.append(token.text)
-
-        # If empty, return the original ingredient
-        if len(key_terms) == 0:
-            return ingredient
-
-        # Returning a string that combines the key terms
-        return ' '.join(key_terms)
-
     def preprocess_ingredient(self, ingredient):
         # Normalize case
         ingredient = ingredient.lower()
-
-        # Focus on key terms
-        ingredient = self.extract_key_terms(ingredient)
 
         # Lemmatize to reduce words to their base form
         lemmatizer = WordNetLemmatizer()
@@ -101,11 +73,30 @@ class GraphBuilder:
             for token in ingredient.split(' ')]
         return ' '.join(lemmatized)
 
-    def get_ingredient_vectors(self, ingredients):
-        # Convert ingredients to vectors using spaCy
-        vectors = [self.nlp(ingredient).vector
-                   for ingredient in ingredients]
-        return np.array(vectors)
+    def get_similarity_score(word1, word2):
+        # Tokenize the input words and generate phrases
+        tokens_word1 = word1.split()
+        tokens_word2 = word2.split()
+
+        tokens_word1 = phrase_model[tokens_word1]
+        tokens_word2 = phrase_model[tokens_word2]
+
+        similarity_scores = []
+
+        for token1 in tokens_word1:
+            for token2 in tokens_word2:
+                # Must have at least one equivalent token to compare
+                if token1 == token2:
+                    similarity_scores.append(1)
+                elif token1 in model.wv.key_to_index and token2 in model.wv.key_to_index:
+                    similarity_score = model.wv.similarity(
+                        token1, token2)
+                    similarity_scores.append(similarity_score)
+                else:
+                    continue
+        # Average similarity scores
+        return sum(
+            similarity_scores) / len(similarity_scores) if similarity_scores else 0
 
     def get_or_create_ingredient_node(self, ingredient_data):
         ingredient_name = ingredient_data['food']
@@ -132,8 +123,7 @@ class GraphBuilder:
         """
 
         existing_ingredients = self.graph.run(
-            query, normWords=words,
-            category=ingredient_data['foodCategory']).data()
+            query, normWords=words).data()
 
         # Then similarity metric filter
         if existing_ingredients:
@@ -142,16 +132,16 @@ class GraphBuilder:
                     ex_ingredient['i']['name'])
                 for ex_ingredient in existing_ingredients]
 
-            existing_vectors = self.get_ingredient_vectors(
-                preprocessed_ex_ingredients)
-            new_vector = self.nlp(normalized_name).vector
-            similarity = cosine_similarity(
-                existing_vectors, [new_vector])
+            similarity = [
+                self.calculate_similarity(
+                    normalized_name, ex_ingredient)
+                for ex_ingredient in preprocessed_ex_ingredients]
+
             most_similar_score = np.max(similarity)
+            most_similar = np.argmax(similarity)
 
             # Tuned to this score
             if most_similar_score > 0.85:
-                most_similar = np.argmax(similarity)
                 ingredient_node = existing_ingredients[most_similar][
                     'i']
                 # Checking sensitivity
@@ -159,13 +149,27 @@ class GraphBuilder:
                     print(
                         f"Deduped similar ingredient: {ingredient_name} -> {ingredient_node['name']}")
                 return ingredient_node
-
+            # Checking sensitivity
+            elif most_similar_score > 0.75:
+                print(
+                    f"Failed to dedupe similar ingredient: {ingredient_name} -> {existing_ingredients[most_similar]['i']['name']}")
         # Else create a new ingredient node
         ingredient_node = Node(
             "Ingredient",
             name=normalized_name,
-            category=ingredient_data['foodCategory'],
-            image=ingredient_data['image'])
+            category=ingredient_data['foodCategory'])
+        self.graph.create(ingredient_node)
+
+        return ingredient_node
+
+    def force_create_ingredient_node(self, ingredient_data):
+        ingredient_name = ingredient_data['food']
+        normalized_name = self.preprocess_ingredient(ingredient_name)
+
+        ingredient_node = Node(
+            "Ingredient",
+            name=normalized_name,
+            category=ingredient_data['foodCategory'])
         self.graph.create(ingredient_node)
 
         return ingredient_node
@@ -266,43 +270,79 @@ if __name__ == "__main__":
     result = graph_builder.graph.run(query).data()
     node_count = result[0]['nodeCount']
 
-    # # Initialize with base ingredients to avoid de-duping to edge cases
-    # ingredients = [
-    #     # Meat and Protein
-    #     'chicken', 'beef', 'pork', 'fish', 'shrimp', 'tofu', 'tempeh', 'lentils', 'beans', 'chickpeas', 'eggs',
-    #     'turkey', 'salmon', 'tuna', 'sausage', 'bacon', 'ham', 'steak', 'ground beef', 'pepperoni', 'crab',
-    #     'lobster', 'duck', 'lamb'
-    #     # Grains and Flours
-    #     'flour', 'rice', 'pasta', 'quinoa', 'oats', 'bread', 'barley', 'couscous', 'bulgur', 'cornmeal', 'wheat germ',
-    #     'breadcrumbs', 'polenta', 'farro', 'cereal', 'buckwheat', 'millet', 'amaranth', 'sorghum', 'spelt', 'teff',
-    #     # Vegetables
-    #     'onion', 'garlic', 'tomato', 'potato', 'carrot', 'bell pepper', 'spinach', 'broccoli', 'mushroom', 'zucchini',
-    #     'cucumber', 'celery', 'lettuce', 'cabbage', 'green beans', 'peas', 'corn', 'sweet potato', 'asparagus', 'kale',
-    #     'brussels sprouts', 'cauliflower', 'artichoke', 'beet', 'radish', 'turnip', 'eggplant', 'squash', 'pumpkin',
-    #     'okra', 'rhubarb', 'fennel', 'leek', 'shallot', 'scallion', 'chives', 'ginger', 'chili pepper', 'jalapeno',
-    #     # Fruits
-    #     'apple', 'banana', 'orange', 'strawberry', 'blueberry', 'lemon', 'lime', 'grape', 'watermelon', 'pineapple',
-    #     'mango', 'kiwi', 'peach', 'pear', 'raspberry', 'blackberry', 'avocado', 'cranberry', 'cherry', 'coconut',
-    #     'pomegranate', 'plum', 'fig', 'date', 'guava', 'papaya', 'passion fruit', 'lychee', 'dragonfruit', 'starfruit',
-    #     # Dairy and Alternatives
-    #     'milk', 'cheese', 'yogurt', 'butter', 'cream', 'sour cream', 'cream cheese', 'cottage cheese', 'ricotta',
-    #     'goat cheese', 'cheddar', 'mozzarella', 'parmesan', 'feta', 'swiss cheese', 'almond milk', 'soy milk',
-    #     'coconut milk', 'cashew milk', 'oat milk', 'vegan cheese',
-    #     # Herbs and Spices
-    #     'salt', 'pepper', 'oregano', 'basil', 'parsley', 'thyme', 'rosemary', 'cumin', 'paprika', 'chili powder',
-    #     'cinnamon', 'nutmeg', 'ginger', 'coriander', 'garlic powder', 'onion powder', 'bay leaf', 'turmeric', 'sage',
-    #     'dill', 'mustard', 'cayenne', 'curry powder', 'cardamom', 'cloves', 'allspice', 'fennel', 'tarragon',
-    # ]
+    # Define initialized ingredients
+    food_categories = {
+        'Meat and Protein':
+        ['chicken', 'beef', 'pork', 'fish', 'shrimp', 'tofu', 'tempeh',
+         'lentils', 'beans', 'chickpeas', 'eggs', 'turkey', 'salmon',
+         'tuna', 'sausage', 'bacon', 'ham', 'steak', 'ground beef',
+         'pepperoni', 'crab', 'lobster', 'duck', 'lamb'],
+        'Grains':
+        ['flour', 'noodles', 'rice', 'pasta', 'quinoa', 'oats', 'bread',
+         'barley', 'couscous', 'bulgur', 'cornmeal', 'wheat germ',
+         'breadcrumbs', 'polenta', 'farro', 'cereal', 'buckwheat',
+         'millet', 'amaranth', 'sorghum', 'spelt', 'teff'],
+        'Vegetables':
+        ['green onion', 'onion', 'garlic', 'tomato', 'potato', 'carrot',
+         'bell pepper', 'spinach', 'broccoli', 'mushroom', 'zucchini',
+         'cucumber', 'celery', 'lettuce', 'cabbage', 'green beans',
+         'peas', 'corn', 'sweet potato', 'asparagus', 'kale',
+         'brussels sprouts', 'cauliflower', 'artichoke', 'beet',
+         'radish', 'turnip', 'eggplant', 'squash', 'pumpkin', 'okra',
+         'rhubarb', 'fennel', 'leek', 'shallot', 'scallion', 'chives',
+         'ginger', 'chili pepper', 'jalapeno'],
+        'Fruits':
+        ['apple', 'banana', 'orange', 'strawberry', 'blueberry',
+         'lemon', 'lime', 'grape', 'watermelon', 'pineapple', 'mango',
+         'kiwi', 'peach', 'pear', 'raspberry', 'blackberry', 'avocado',
+         'cranberry', 'cherry', 'coconut', 'pomegranate', 'plum', 'fig',
+         'date', 'guava', 'papaya', 'passion fruit', 'lychee',
+         'dragonfruit', 'starfruit'],
+        'Dairy and Alternatives':
+        ['milk', 'cheese', 'yogurt', 'butter', 'cream', 'sour cream',
+         'cream cheese', 'cottage cheese', 'ricotta', 'goat cheese',
+         'cheddar', 'mozzarella', 'parmesan', 'feta', 'swiss cheese',
+         'almond milk', 'soy milk', 'coconut milk', 'cashew milk',
+         'oat milk', 'vegan cheese'],
+        'Herbs and Spices':
+        ['salt', 'pepper', 'oregano', 'basil', 'parsley', 'thyme',
+         'rosemary', 'cumin', 'paprika', 'chili powder', 'cinnamon',
+         'nutmeg', 'ginger', 'coriander', 'garlic powder',
+         'onion powder', 'bay leaf', 'turmeric', 'sage', 'dill',
+         'mustard', 'cayenne', 'curry powder', 'cardamom', 'cloves',
+         'allspice', 'fennel', 'tarragon'],
+        'Sauces':
+        ['soy sauce', 'vinegar', 'black vinegar', 'fish sauce',
+         'Worcestershire sauce', 'teriyaki sauce', 'hot sauce',
+         'barbecue sauce', 'ketchup', 'mayonnaise', 'mustard', 'relish',
+         'salsa', 'tahini', 'hoisin sauce', 'sriracha'],
+        'Oils': ['vegetable oil', 'olive oil', 'coconut oil', 'sesame oil'],
+        'Nuts':
+        ['peanut butter', 'almonds', 'walnuts', 'cashews', 'peanuts',
+         'pecans', 'pistachios', 'macadamia nuts', 'hazelnuts',
+         'Brazil nuts'],
+        'Juice':
+        ['orange juice', 'apple juice', 'grape juice',
+         'cranberry juice', 'pineapple juice', 'tomato juice',
+         'lemon juice', 'lime juice', 'vegetable juice', 'prune juice'],
+        'Sweeteners':
+        ['sugar', 'brown sugar', 'honey', 'maple syrup', 'agave nectar',
+         'molasses', 'artificial sweeteners'],
+        'Canned Foods':
+        ['canned beans', 'canned tomatoes', 'canned tuna',
+         'canned salmon', 'canned vegetables', 'canned fruit',
+         'canned soup', 'canned broth', 'canned coconut milk',
+         'canned pumpkin', 'canned olives', 'canned corn',
+         'canned chickpeas'], }
 
-    import time
-    # start = time.time()
-    # for ingredient in ingredients:
-    #     lap = time.time()
-    #     graph_builder.build_knowledge_graph_by_ingredient(ingredient)
-    #     print(
-    #         f"Time to build {ingredient}: {pretty_print_time(time.time() - lap)}")
-    # print(
-    #     f"Time to build the ingredient graph: {pretty_print_time(time.time() - start)}")
+    start = time.time()
+    # Initialize some ingredients
+    for category, ingredients_list in food_categories.items():
+        for ingredient in ingredients_list:
+            graph_builder.force_create_ingredient_node(
+                {'food': ingredient, 'foodCategory': category})
+    print(
+        f"Time to build the ingredients: {pretty_print_time(time.time() - start)}")
 
     print("Building the graph for diverse cuisines")
 
@@ -315,15 +355,14 @@ if __name__ == "__main__":
 
     # Time this algorithm
     start = time.time()
-    while node_count < 6000:
-        for cuisine in cuisines:
-            # get time to build each cuisine as a lap
-            lap = time.time()
-            graph_builder.build_knowledge_graph_by_cuisine(cuisine)
-            print(
-                f"Time to build {cuisine}: {pretty_print_time(time.time() - lap)}")
-        node_count = graph_builder.graph.run(query).data()[
-            0]['nodeCount']
-        print(f"Current node count: {node_count}")
+    for cuisine in cuisines:
+        # get time to build each cuisine as a lap
+        lap = time.time()
+        graph_builder.build_knowledge_graph_by_cuisine(cuisine)
+        print(
+            f"Time to build {cuisine}: {pretty_print_time(time.time() - lap)}")
+    node_count = graph_builder.graph.run(query).data()[
+        0]['nodeCount']
+    print(f"Current node count: {node_count}")
     print(
         f"Time to build the cuisine graph: {pretty_print_time(time.time() - start)}")
