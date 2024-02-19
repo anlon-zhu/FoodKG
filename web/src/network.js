@@ -31,7 +31,7 @@ function GraphNetwork (parent, props) {
     // Set up parent container
     let links = container.selectAll(".links").data([data.links]);
     let nodes = container.selectAll(".nodes").data([data.nodes]);
-
+    
     // Enter selection
     links = links.enter().append("g").attr("class", "links").merge(links);
     nodes = nodes.enter().append("g").attr("class", "nodes").merge(nodes);

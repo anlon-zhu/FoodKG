@@ -293,7 +293,9 @@ class RecipesByMultipleIngredients(Resource):
 
         node_item_map = {}
         link_item_map = {}
+        top_recipes_map = {}
 
+        # return the top recipes
         for item in result:
             id = item['ID(recipe)']
             p_array = item['p']
@@ -312,7 +314,10 @@ class RecipesByMultipleIngredients(Resource):
                 recipe['id'] = id
                 node_item_map[recipe['name']] = recipe
 
-            # Add relationship to linkItemMap
+            # Add relationship to linkItemMap and topRecipesMap
+            top_recipes_map[recipe['name']] = top_recipes_map.get(
+                recipe['name'], 0) + 1
+
             link_id = f"{ingredient['name']}_{relationship_type}_{recipe['name']}"
             link_item_map[link_id] = {
                 'source': ingredient['name'],
@@ -322,7 +327,8 @@ class RecipesByMultipleIngredients(Resource):
 
         return {
             'nodes': list(node_item_map.values()),
-            'links': list(link_item_map.values())
+            'links': list(link_item_map.values()),
+            'topRecipes': sorted(top_recipes_map.items(), key=lambda x: x[1], reverse=True)[:10]
         }
 
 
