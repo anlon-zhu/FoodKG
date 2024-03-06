@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 import ast
 import re
@@ -291,9 +292,10 @@ class RecipesByMultipleIngredients(Resource):
         result = db.read_transaction(lambda tx: tx.run(
             query, ingredientIds=ingredient_ids).data())
 
-        node_item_map = {}
+        recipe_node_item_map = {}
+        ingredient_node_item_map = {}
         link_item_map = {}
-        top_recipes_map = {}
+        recipe_score = {}
 
         # return the top recipes
         for item in result:
@@ -306,17 +308,14 @@ class RecipesByMultipleIngredients(Resource):
             recipe = p_array[2]
 
             # Add nodes to nodeItemMap if not already present
-            if ingredient['name'] not in node_item_map:
+            if ingredient['name'] not in ingredient_node_item_map:
                 ingredient['type'] = 'ingredient'
-                node_item_map[ingredient['name']] = ingredient
-            if recipe['name'] not in node_item_map:
+                ingredient_node_item_map[ingredient['name']
+                                         ] = ingredient
+            if recipe['name'] not in recipe_node_item_map:
                 recipe['type'] = 'recipe'
                 recipe['id'] = id
-                node_item_map[recipe['name']] = recipe
-
-            # Add relationship to linkItemMap and topRecipesMap
-            top_recipes_map[recipe['name']] = top_recipes_map.get(
-                recipe['name'], 0) + 1
+                recipe_node_item_map[recipe['name']] = recipe
 
             link_id = f"{ingredient['name']}_{relationship_type}_{recipe['name']}"
             link_item_map[link_id] = {
@@ -325,10 +324,35 @@ class RecipesByMultipleIngredients(Resource):
                 'relationship': relationship_type
             }
 
+            # For each recipe node, store how many times it appears with an ingredient
+            recipe_score[recipe['name']] = recipe_score.get(
+                recipe['name'], 0) + 1
+
+            # Bind this score to the node data
+            recipe_node_item_map[recipe['name']
+                                 ]['score'] = recipe_score[recipe['name']]
+
+        top_recipes = sorted(recipe_score.items(),
+                             key=lambda x: x[1], reverse=True)
+        # Get the first quartile of the scores
+        q1 = top_recipes[int(len(top_recipes) * 0.25)][1]
+
+        # Filter out the recipe nodes with scores less than first quartile
+        recipe_node_item_map = {
+            k: v for k, v in recipe_node_item_map.items()
+            if v.get('score', 0) > q1}
+
+        # Filter out the links based on nodes
+        link_item_map = {
+            k: v for k, v in link_item_map.items()
+            if v['source'] in ingredient_node_item_map and
+            v['target'] in recipe_node_item_map}
+
         return {
-            'nodes': list(node_item_map.values()),
+            'recipeNodes': json.dumps(recipe_node_item_map),
+            'ingredientNodes': json.dumps(ingredient_node_item_map),
             'links': list(link_item_map.values()),
-            'topRecipes': sorted(top_recipes_map.items(), key=lambda x: x[1], reverse=True)[:10]
+            'topRecipes': top_recipes[:min(10, len(recipe_node_item_map))]
         }
 
 

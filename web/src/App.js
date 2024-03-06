@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import * as d3 from 'd3';
 import GraphNetwork from './network';
-import IngredientSelect from './ingredientSelect'; // Import the component
+import IngredientSelect from './ingredientSelect';
 import RecipeModal from './recipeModal';
+import TopRecipes from './TopRecipes';
 
 function App() {
   const [ingredients, setIngredients] = useState([]);
@@ -33,7 +34,14 @@ function App() {
     
     axios.post('http://localhost:5000/recipes/by-ingredients', { ingredientIds: newValue.map(ingredient => ingredient.id)})
       .then(response => {
-        setGraphData(response.data);
+          // Parse the string into an object
+        const recipeNodes = JSON.parse(response.data.recipeNodes);
+        const ingredientNodes = JSON.parse(response.data.ingredientNodes);
+        const links = response.data.links;
+        const topRecipes = response.data.topRecipes;
+
+        // Set the graph data with just the values
+        setGraphData({ recipeNodes, ingredientNodes, links, topRecipes });
       })
       .catch(error => {
         console.error('Error fetching graph data:', error);
@@ -66,7 +74,6 @@ function App() {
     let recipeId = recipeNode.id;
     axios.get('http://localhost:5000/recipes/' + recipeId + '/ingredients')
       .then(response => {
-        console.log('Recipe ingredients:', response.data['ingredient_list'])
         recipeNode.ingredients = response.data['ingredient_list'];
         setRecipeNode(recipeNode);
         setModalOpen(true);
@@ -79,7 +86,7 @@ function App() {
   const handleCloseModal = () => {
     setModalOpen(false);
   };
-  
+
   return (
     <div>
       <h1>in<span style={{ color: 'orange' }}>greedi</span>ent</h1>
@@ -93,6 +100,8 @@ function App() {
       <div>
         <svg id='chart' width={canvasWidth} height={canvasHeight- 100}/>
       </div>
+       {graphData && <TopRecipes graphData={graphData} />}
+
       <RecipeModal
         open={modalOpen}
         handleClose={handleCloseModal}
