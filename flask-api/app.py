@@ -337,7 +337,7 @@ class RecipesByMultipleIngredients(Resource):
         # Get the first quartile of the scores
         q1 = top_recipes[int(len(top_recipes) * 0.25)][1]
 
-        # Filter out the recipe nodes with scores less than first quartile
+        # Filter out the recipe nodes with scores less than this
         recipe_node_item_map = {
             k: v for k, v in recipe_node_item_map.items()
             if v.get('score', 0) > q1}

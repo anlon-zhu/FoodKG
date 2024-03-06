@@ -13,7 +13,12 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CircleIcon from "@mui/icons-material/Circle";
 import generateColorMap from "./colorMap";
 
-function TopRecipes({ graphData }) {
+function TopRecipes({
+  graphData,
+  handleMouseEnter,
+  handleMouseLeave,
+  handleMouseClick,
+}) {
   const [showDropdown, setShowDropdown] = useState(false);
 
   const toggleDropdown = () => {
@@ -103,11 +108,17 @@ function TopRecipes({ graphData }) {
             return (
               <ListItem
                 key={index}
+                onMouseEnter={() => handleMouseEnter(recipe)}
+                onMouseLeave={() => handleMouseLeave(recipe)}
+                onClick={() => handleMouseClick(graphData.recipeNodes[recipe])}
                 sx={{
                   display: "flex",
                   alignItems: "center",
                   paddingX: "1em",
-                  "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.1)" },
+                  "&:hover": {
+                    backgroundColor: "rgba(255, 152, 0, 0.1)",
+                    cursor: "pointer",
+                  },
                   borderRadius: 0,
                 }}
               >
@@ -120,7 +131,9 @@ function TopRecipes({ graphData }) {
                 />
                 <ListItemText
                   primary={recipe}
-                  secondary={`${score} ingredients`}
+                  secondary={`${score}/${
+                    Object.keys(graphData.ingredientNodes).length
+                  } ingredients`}
                   primaryTypographyProps={{
                     variant: "body2",
                     noWrap: true,

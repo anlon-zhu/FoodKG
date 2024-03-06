@@ -4,7 +4,8 @@ import generateColorMap from './colorMap';
 function GraphNetwork (parent, props) {
     const {
         data,
-        handleOpenModal,
+        handleMouseEnter,
+        handleMouseLeave,
     } = props;
 
     if (!data) {
@@ -35,8 +36,8 @@ function GraphNetwork (parent, props) {
 
     // Define the simulation
     const simulation = d3.forceSimulation(nodedata)
-        .force("link", d3.forceLink(data.links).distance(30).strength(0.1).id(d => d.name))
-        .force('chargeForce', d3.forceManyBody().strength(-20))
+        .force("link", d3.forceLink(data.links).distance(30).strength(0.05).id(d => d.name))
+        .force('chargeForce', d3.forceManyBody().strength(-30))
         .force("center", d3.forceCenter(width / 2, height / 2));
     
     // Define zoom behavior
@@ -95,6 +96,7 @@ function GraphNetwork (parent, props) {
 
     const newNode = node.enter().append("g")
         .attr("class", "node")
+        .attr("data-name", d => d.name)
         .call(d3.drag()
             .on("start", dragstarted)
             .on("drag", dragged)
@@ -106,6 +108,7 @@ function GraphNetwork (parent, props) {
     circles.exit().remove();
     circles.enter().append("circle") // Append circles to newNode
     .attr("class", "node-circle")
+    .attr("data-name", d => d.name)
     .attr("r", d => d.type === 'ingredient' ? ingredientRadius : recipeRadius)
     .attr("fill", d => d.type === 'recipe' ? colorMap(d.score) : '#dad2bc')
     .merge(circles); // Merge enter and update selections
@@ -129,39 +132,20 @@ function GraphNetwork (parent, props) {
 
     // Tooltip
     newNode.on("mouseenter", (event, d) => {
-        const circle = d3.select(event.currentTarget).select(".node-circle");
-
         if (d.type === 'recipe') {
+            handleMouseEnter(d.name);
+          
             d3.select("#tooltip")
-            .style("display", "block")
-            .html(`<div class="tooltip-title">${d.name}</div>`)
-            .style("left", (event.pageX + tooltipPadding) + "px")
-            .style("top", (event.pageY - tooltipPadding) + "px");
-
-            circle
-                .transition()
-                .duration(300)
-                .attr("r", recipeRadius * 1.5)
-                .style("opacity", 0.7)
-                .style("fill", "#ff9800");
-
-            // Append a plus sign
-            d3.select(event.currentTarget).append("text")
-                .attr("class", "plus-sign")
-                .attr("x", 0)
-                .attr("y", 5)
-                .attr("text-anchor", "middle")
-                .attr("font-size", "16px")
-                .text("+")
-                .on("click", (event, d) => {
-                    d3.select("#tooltip").style("display", "none");
-                    handleOpenModal(d);
-                });
+                .style("display", "block")
+                .html(`<div class="tooltip-title">${d.name}</div>`)
+                .style("left", event.pageX + tooltipPadding + "px")
+                .style("top", event.pageY - tooltipPadding + "px");
         } else {
+            const circle = d3.select(event.currentTarget).select(".node-circle");
             circle
-                .transition()
-                .duration(300)
-                .attr("r", ingredientRadius * 1.25);
+            .transition()
+            .duration(300)
+            .attr("r", ingredientRadius * 1.25);   
         }
     })
     .on("mousemove", (event) => {
@@ -173,18 +157,7 @@ function GraphNetwork (parent, props) {
         const circle = d3.select(event.currentTarget).select(".node-circle");
 
         if (d.type === 'recipe') {
-            d3.select("#tooltip")
-            .style("display", "none");
-    
-            // Restore node size                
-            circle.transition()
-                .duration(200)
-                .attr("r", recipeRadius)
-                .style("opacity", 1)
-                .style("fill", d => colorMap(d.score));
-        
-            // Remove the plus sign
-            d3.select(event.currentTarget).select(".plus-sign").remove();
+            handleMouseLeave(d.name);
         }
         else {
             circle

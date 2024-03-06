@@ -5,6 +5,7 @@ import GraphNetwork from './network';
 import IngredientSelect from './ingredientSelect';
 import RecipeModal from './recipeModal';
 import TopRecipes from './TopRecipes';
+import generateColorMap from './colorMap';
 
 function App() {
   const [ingredients, setIngredients] = useState([]);
@@ -62,8 +63,8 @@ function App() {
         data: graphData,
         modalOpen,
         recipeNode,
-        handleOpenModal,
-        handleCloseModal
+        handleMouseEnter,
+        handleMouseLeave
       });
     } else {
       svg.selectAll("*").remove(); // Clear the SVG if there's no data
@@ -87,6 +88,54 @@ function App() {
     setModalOpen(false);
   };
 
+  const handleMouseEnter = (recipeName) => {
+      // Trigger hover event in sync between the graph and the list
+      const circle = d3.select(`circle[data-name="${recipeName}"]`);
+      const node = d3.select(`g.node[data-name="${recipeName}"]`);
+      const recipeRadius = 8;
+
+      if (!circle.empty()) {
+          circle.transition()
+              .duration(300)
+              .attr("r", recipeRadius * 1.5)
+              .style("opacity", 0.7)
+              .style("fill", "#ff9800");
+          
+          // Append a plus sign
+          node.append("text")
+              .attr("class", "plus-sign")
+              .attr("x", 0)
+              .attr("y", 5)
+              .attr("text-anchor", "middle")
+              .attr("font-size", "16px")
+              .text("+")
+              .on("click", (event, d) => {
+                handleMouseClick(d)
+              });
+      }
+  }
+
+  const handleMouseClick = (recipeName) => {
+      d3.select("#tooltip").style("display", "none");
+      handleOpenModal(recipeName);
+  }
+
+  const colorMap = generateColorMap(Object.values(graphData?.recipeNodes || {}));
+
+  const handleMouseLeave = (recipeName) => { 
+      const recipeRadius = 8;
+      const circle = d3.select(`circle[data-name="${recipeName}"]`);
+
+      d3.select("#tooltip").style("display", "none");
+      circle
+          .transition()
+          .duration(200)
+          .attr("r", recipeRadius)
+          .style("opacity", 1)
+          .style("fill", d => colorMap(d.score));
+      d3.selectAll(".plus-sign").remove();
+  }
+
   return (
     <div>
       <h1>in<span style={{ color: 'orange' }}>greedi</span>ent</h1>
@@ -98,9 +147,9 @@ function App() {
       />
       </div>
       <div>
-        <svg id='chart' width={canvasWidth} height={canvasHeight- 100}/>
+        <svg id='chart' width={canvasWidth} height={canvasHeight}/>
       </div>
-       {graphData && <TopRecipes graphData={graphData} />}
+       {graphData && <TopRecipes graphData={graphData} handleMouseEnter={handleMouseEnter} handleMouseLeave={handleMouseLeave} handleMouseClick={handleMouseClick}/>}
 
       <RecipeModal
         open={modalOpen}
