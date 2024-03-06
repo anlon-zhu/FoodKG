@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import * as d3 from 'd3';
 import GraphNetwork from './network';
@@ -53,25 +53,12 @@ function App() {
   const canvasWidth = window.innerWidth;
   const canvasHeight = window.innerHeight - 100;
 
-  useEffect(() => {
-    if (graphData) {
-      // You can set up D3 simulation here if needed
-      svg.selectAll("*").remove(); // Clear previous content
+  const handleCloseModal = () => {
+    setModalOpen(false);
+  };
 
-      // Call the GraphNetwork component with props
-      svg.call(GraphNetwork, {
-        data: graphData,
-        modalOpen,
-        recipeNode,
-        handleMouseEnter,
-        handleMouseLeave
-      });
-    } else {
-      svg.selectAll("*").remove(); // Clear the SVG if there's no data
-    }
-  }, [svg, graphData, modalOpen, recipeNode]);
-
-  const handleOpenModal = (recipeNode) => {
+  const handleMouseClick = useCallback((recipeNode) => {
+    d3.select("#tooltip").style("display", "none");
     let recipeId = recipeNode.id;
     axios.get('http://localhost:5000/recipes/' + recipeId + '/ingredients')
       .then(response => {
@@ -82,13 +69,9 @@ function App() {
       .catch(error => {
         console.error('Error fetching ingredient data:', error);
       });
-  };
+  }, []);
 
-  const handleCloseModal = () => {
-    setModalOpen(false);
-  };
-
-  const handleMouseEnter = (recipeName) => {
+  const handleMouseEnter =  useCallback((recipeName) => {
       // Trigger hover event in sync between the graph and the list
       const circle = d3.select(`circle[data-name="${recipeName}"]`);
       const node = d3.select(`g.node[data-name="${recipeName}"]`);
@@ -113,16 +96,11 @@ function App() {
                 handleMouseClick(d)
               });
       }
-  }
-
-  const handleMouseClick = (recipeName) => {
-      d3.select("#tooltip").style("display", "none");
-      handleOpenModal(recipeName);
-  }
+  }, [handleMouseClick]);
 
   const colorMap = generateColorMap(Object.values(graphData?.recipeNodes || {}));
 
-  const handleMouseLeave = (recipeName) => { 
+  const handleMouseLeave = useCallback((recipeName) => { 
       const recipeRadius = 8;
       const circle = d3.select(`circle[data-name="${recipeName}"]`);
 
@@ -134,7 +112,25 @@ function App() {
           .style("opacity", 1)
           .style("fill", d => colorMap(d.score));
       d3.selectAll(".plus-sign").remove();
-  }
+  }, [colorMap]);
+
+  useEffect(() => {
+    if (graphData) {
+      // You can set up D3 simulation here if needed
+      svg.selectAll("*").remove(); // Clear previous content
+
+      // Call the GraphNetwork component with props
+      svg.call(GraphNetwork, {
+        data: graphData,
+        modalOpen,
+        recipeNode,
+        handleMouseEnter,
+        handleMouseLeave
+      });
+    } else {
+      svg.selectAll("*").remove(); // Clear the SVG if there's no data
+    }
+  }, [svg, graphData, modalOpen, recipeNode, handleMouseEnter, handleMouseLeave]);
 
   return (
     <div>
