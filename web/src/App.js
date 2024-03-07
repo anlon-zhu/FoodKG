@@ -7,7 +7,8 @@ import RecipeModal from './recipeModal';
 import TopRecipes from './TopRecipes';
 import generateColorMap from './colorMap';
 
-const BASE_URL = process.env.ENV_URL || "https://ingreedient-flask-api.onrender.com/";
+const BASE_URL = process.env.REACT_APP_ENV_URL || "https://ingreedient-flask-api.onrender.com/";
+console.log(BASE_URL)
 
 function App() {
   const [ingredients, setIngredients] = useState([]);
@@ -38,6 +39,7 @@ function App() {
     axios.post(BASE_URL + 'recipes/by-ingredients', { ingredientIds: newValue.map(ingredient => ingredient.id)})
       .then(response => {
           // Parse the string into an object
+        console.log(response)
         const recipeNodes = JSON.parse(response.data.recipeNodes);
         const ingredientNodes = JSON.parse(response.data.ingredientNodes);
         const links = response.data.links;
