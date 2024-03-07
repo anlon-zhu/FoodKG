@@ -7,6 +7,8 @@ import RecipeModal from './recipeModal';
 import TopRecipes from './TopRecipes';
 import generateColorMap from './colorMap';
 
+const BASE_URL = process.env.ENV_URL || "https://ingreedient-flask-api.onrender.com/";
+
 function App() {
   const [ingredients, setIngredients] = useState([]);
   const [selectedIngredients, setSelectedIngredients] = useState([]);
@@ -16,7 +18,7 @@ function App() {
 
   useEffect(() => {
     // Fetch ingredients list from your Flask API
-    axios.get('http://localhost:5000/ingredients')
+    axios.get(BASE_URL + 'ingredients')
       .then(response => {
         setIngredients(response.data);
       })
@@ -33,7 +35,7 @@ function App() {
       return;
     }
     
-    axios.post('http://localhost:5000/recipes/by-ingredients', { ingredientIds: newValue.map(ingredient => ingredient.id)})
+    axios.post(BASE_URL + 'recipes/by-ingredients', { ingredientIds: newValue.map(ingredient => ingredient.id)})
       .then(response => {
           // Parse the string into an object
         const recipeNodes = JSON.parse(response.data.recipeNodes);
@@ -60,7 +62,7 @@ function App() {
   const handleMouseClick = useCallback((recipeNode) => {
     d3.select("#tooltip").style("display", "none");
     let recipeId = recipeNode.id;
-    axios.get('http://localhost:5000/recipes/' + recipeId + '/ingredients')
+    axios.get(BASE_URL + 'recipes/' + recipeId + '/ingredients')
       .then(response => {
         recipeNode.ingredients = response.data['ingredient_list'];
         setRecipeNode(recipeNode);
