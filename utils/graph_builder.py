@@ -270,106 +270,111 @@ if __name__ == "__main__":
     RETURN count(n) AS nodeCount
     """
 
-    # Execute the Cypher query
-    result = graph_builder.graph.run(query).data()
-    node_count = result[0]['nodeCount']
+    while True:
+        # Execute the Cypher query
+        result = graph_builder.graph.run(query).data()
+        node_count = result[0]['nodeCount']
 
-    # Define initialized ingredients
-    food_categories = {
-        'Meat and Protein':
-        ['chicken', 'beef', 'pork', 'fish', 'shrimp', 'tofu', 'tempeh',
-         'lentils', 'beans', 'chickpeas', 'eggs', 'turkey', 'salmon',
-         'tuna', 'sausage', 'bacon', 'ham', 'steak', 'ground beef',
-         'pepperoni', 'crab', 'lobster', 'duck', 'lamb'],
-        'Grains':
-        ['flour', 'noodles', 'rice', 'pasta', 'quinoa', 'oats', 'bread',
-         'barley', 'couscous', 'bulgur', 'cornmeal', 'wheat germ',
-         'breadcrumbs', 'polenta', 'farro', 'cereal', 'buckwheat',
-         'millet', 'amaranth', 'sorghum', 'spelt', 'teff'],
-        'Vegetables':
-        ['spring onion', 'onion', 'garlic', 'tomato', 'potato', 'carrot',
-         'bell pepper', 'spinach', 'broccoli', 'mushroom', 'zucchini',
-         'cucumber', 'celery', 'lettuce', 'cabbage', 'green beans',
-         'peas', 'corn', 'sweet potato', 'asparagus', 'kale',
-         'brussels sprouts', 'cauliflower', 'artichoke', 'beet',
-         'radish', 'turnip', 'eggplant', 'squash', 'pumpkin', 'okra',
-         'rhubarb', 'fennel', 'leek', 'shallot', 'scallion', 'chives',
-         'ginger', 'chili pepper', 'jalapeno'],
-        'Fruits':
-        ['apple', 'banana', 'orange', 'strawberry', 'blueberry',
-         'lemon', 'lime', 'grape', 'watermelon', 'pineapple', 'mango',
-         'kiwi', 'peach', 'pear', 'raspberry', 'blackberry', 'avocado',
-         'cranberry', 'cherry', 'coconut', 'pomegranate', 'plum', 'fig',
-         'date', 'guava', 'papaya', 'passion fruit', 'lychee',
-         'dragonfruit', 'starfruit'],
-        'Dairy and Alternatives':
-        ['milk', 'cheese', 'yogurt', 'butter', 'cream', 'sour cream',
-         'cream cheese', 'cottage cheese', 'ricotta', 'goat cheese',
-         'cheddar', 'mozzarella', 'parmesan', 'feta', 'swiss cheese',
-         'almond milk', 'soy milk', 'coconut milk', 'cashew milk',
-         'oat milk', 'vegan cheese'],
-        'Herbs and Spices':
-        ['salt', 'pepper', 'oregano', 'basil', 'parsley', 'thyme',
-         'sesame seeds', 'rosemary', 'cumin', 'paprika', 'chili powder',
-         'cinnamon', 'nutmeg', 'ginger', 'coriander', 'garlic powder',
-         'onion powder', 'bay leaf', 'turmeric', 'sage', 'dill',
-         'mustard', 'cayenne', 'curry powder', 'cardamom', 'cloves',
-         'allspice', 'fennel', 'tarragon'],
-        'Sauces':
-        ['soy sauce', 'vinegar', 'black vinegar', 'rice vinegar', 'fish sauce',
-         'Worcestershire sauce', 'teriyaki sauce', 'hot sauce',
-         'barbecue sauce', 'ketchup', 'mayonnaise', 'mustard', 'relish',
-         'salsa', 'tahini', 'hoisin sauce', 'sriracha'],
-        'Oils': ['oil', 'olive oil', 'coconut oil', 'sesame oil'],
-        'Nuts':
-        ['peanut butter', 'almonds', 'walnuts', 'cashews', 'peanuts',
-         'pecans', 'pistachios', 'macadamia nuts', 'hazelnuts',
-         'Brazil nuts'],
-        'Juice':
-        ['orange juice', 'apple juice', 'grape juice',
-         'cranberry juice', 'pineapple juice', 'tomato juice',
-         'lemon juice', 'lime juice', 'vegetable juice', 'prune juice'],
-        'Sweeteners':
-        ['sugar', 'brown sugar', 'honey', 'maple syrup', 'agave nectar',
-         'molasses', 'artificial sweeteners'],
-        'Canned Foods':
-        ['canned beans', 'canned tomatoes', 'canned tuna',
-         'canned salmon', 'canned vegetables', 'canned fruit',
-         'canned soup', 'canned broth', 'canned coconut milk',
-         'canned pumpkin', 'canned olives', 'canned corn',
-         'canned chickpeas'], }
+        if node_count > 5000:
+            break
 
-    start = time.time()
-    # Initialize some ingredients
-    for category, ingredients_list in food_categories.items():
-        for ingredient in ingredients_list:
-            graph_builder.force_create_ingredient_node(
-                {'food': ingredient, 'foodCategory': category})
-    print(
-        f"Time to build the ingredients: {pretty_print_time(time.time() - start)}")
+        # # Define initialized ingredients
+        # food_categories = {
+        #     'Meat and Protein':
+        #     ['chicken', 'beef', 'pork', 'fish', 'shrimp', 'tofu', 'tempeh',
+        #      'lentils', 'beans', 'chickpeas', 'eggs', 'turkey', 'salmon',
+        #      'tuna', 'sausage', 'bacon', 'ham', 'steak', 'ground beef',
+        #      'pepperoni', 'crab', 'lobster', 'duck', 'lamb'],
+        #     'Grains':
+        #     ['flour', 'noodles', 'rice', 'pasta', 'quinoa', 'oats', 'bread',
+        #      'barley', 'couscous', 'bulgur', 'cornmeal', 'wheat germ',
+        #      'breadcrumbs', 'polenta', 'farro', 'cereal', 'buckwheat',
+        #      'millet', 'amaranth', 'sorghum', 'spelt', 'teff'],
+        #     'Vegetables':
+        #     ['spring onion', 'onion', 'garlic', 'tomato', 'potato', 'carrot',
+        #      'bell pepper', 'spinach', 'broccoli', 'mushroom', 'zucchini',
+        #      'cucumber', 'celery', 'lettuce', 'cabbage', 'green beans',
+        #      'peas', 'corn', 'sweet potato', 'asparagus', 'kale',
+        #      'brussels sprouts', 'cauliflower', 'artichoke', 'beet',
+        #      'radish', 'turnip', 'eggplant', 'squash', 'pumpkin', 'okra',
+        #      'rhubarb', 'fennel', 'leek', 'shallot', 'scallion', 'chives',
+        #      'ginger', 'chili pepper', 'jalapeno'],
+        #     'Fruits':
+        #     ['apple', 'banana', 'orange', 'strawberry', 'blueberry',
+        #      'lemon', 'lime', 'grape', 'watermelon', 'pineapple', 'mango',
+        #      'kiwi', 'peach', 'pear', 'raspberry', 'blackberry', 'avocado',
+        #      'cranberry', 'cherry', 'coconut', 'pomegranate', 'plum', 'fig',
+        #      'date', 'guava', 'papaya', 'passion fruit', 'lychee',
+        #      'dragonfruit', 'starfruit'],
+        #     'Dairy and Alternatives':
+        #     ['milk', 'cheese', 'yogurt', 'butter', 'cream', 'sour cream',
+        #      'cream cheese', 'cottage cheese', 'ricotta', 'goat cheese',
+        #      'cheddar', 'mozzarella', 'parmesan', 'feta', 'swiss cheese',
+        #      'almond milk', 'soy milk', 'coconut milk', 'cashew milk',
+        #      'oat milk', 'vegan cheese'],
+        #     'Herbs and Spices':
+        #     ['salt', 'pepper', 'oregano', 'basil', 'parsley', 'thyme',
+        #      'sesame seeds', 'rosemary', 'cumin', 'paprika', 'chili powder',
+        #      'cinnamon', 'nutmeg', 'ginger', 'coriander', 'garlic powder',
+        #      'onion powder', 'bay leaf', 'turmeric', 'sage', 'dill',
+        #      'mustard', 'cayenne', 'curry powder', 'cardamom', 'cloves',
+        #      'allspice', 'fennel', 'tarragon'],
+        #     'Sauces':
+        #     ['soy sauce', 'vinegar', 'black vinegar', 'rice vinegar', 'fish sauce',
+        #      'Worcestershire sauce', 'teriyaki sauce', 'hot sauce',
+        #      'barbecue sauce', 'ketchup', 'mayonnaise', 'mustard', 'relish',
+        #      'salsa', 'tahini', 'hoisin sauce', 'sriracha'],
+        #     'Oils': ['oil', 'olive oil', 'coconut oil', 'sesame oil'],
+        #     'Nuts':
+        #     ['peanut butter', 'almonds', 'walnuts', 'cashews', 'peanuts',
+        #      'pecans', 'pistachios', 'macadamia nuts', 'hazelnuts',
+        #      'Brazil nuts'],
+        #     'Juice':
+        #     ['orange juice', 'apple juice', 'grape juice',
+        #      'cranberry juice', 'pineapple juice', 'tomato juice',
+        #      'lemon juice', 'lime juice', 'vegetable juice', 'prune juice'],
+        #     'Sweeteners':
+        #     ['sugar', 'brown sugar', 'honey', 'maple syrup', 'agave nectar',
+        #      'molasses', 'artificial sweeteners'],
+        #     'Canned Foods':
+        #     ['canned beans', 'canned tomatoes', 'canned tuna',
+        #      'canned salmon', 'canned vegetables', 'canned fruit',
+        #      'canned soup', 'canned broth', 'canned coconut milk',
+        #      'canned pumpkin', 'canned olives', 'canned corn',
+        #      'canned chickpeas'], }
 
-    print("Building the graph for diverse cuisines")
+        # start = time.time()
+        # # Initialize some ingredients
+        # for category, ingredients_list in food_categories.items():
+        #     for ingredient in ingredients_list:
+        #         graph_builder.force_create_ingredient_node(
+        #             {'food': ingredient, 'foodCategory': category})
+        # print(
+        #     f"Time to build the ingredients: {pretty_print_time(time.time() - start)}")
 
-    cuisines = ['Asian', 'Chinese', 'Japanese', 'South East Asian'] + [
-        'American', 'Asian', 'British', 'Caribbean',
-        'Central Europe', 'Chinese', 'Eastern Europe', 'French',
-        'Indian', 'Italian', 'Japanese', 'Kosher', 'Mediterranean',
-        'Mexican', 'Middle Eastern', 'Nordic', 'South American',
-        'South East Asian']
+        print("Building the graph for diverse cuisines")
 
-    # Time this algorithm
-    start = time.time()
-    for cuisine in cuisines:
-        # get time to build each cuisine as a lap
-        lap = time.time()
-        graph_builder.build_knowledge_graph_by_cuisine(cuisine)
+        cuisines = [
+            'Asian', 'Chinese', 'Japanese', 'South East Asian'] + [
+            'American', 'Asian', 'British', 'Caribbean',
+            'Central Europe', 'Chinese', 'Eastern Europe', 'French',
+            'Indian', 'Italian', 'Japanese', 'Kosher', 'Mediterranean',
+            'Mexican', 'Middle Eastern', 'Nordic', 'South American',
+            'South East Asian']
+
+        # Time this algorithm
+        start = time.time()
+        for cuisine in cuisines:
+            # get time to build each cuisine as a lap
+            lap = time.time()
+            graph_builder.build_knowledge_graph_by_cuisine(cuisine)
+            print(
+                f"Time to build {cuisine}: {pretty_print_time(time.time() - lap)}")
+        node_count = graph_builder.graph.run(query).data()[
+            0]['nodeCount']
+        print(f"Current node count: {node_count}")
         print(
-            f"Time to build {cuisine}: {pretty_print_time(time.time() - lap)}")
-    node_count = graph_builder.graph.run(query).data()[
-        0]['nodeCount']
-    print(f"Current node count: {node_count}")
-    print(
-        f"Time to build the cuisine graph: {pretty_print_time(time.time() - start)}")
+            f"Time to build the cuisine graph: {pretty_print_time(time.time() - start)}")
 
     # Write the avoided and dodgy dedupes to a file
     with open("dodgy_dedupes.txt", "w") as file:
