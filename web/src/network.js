@@ -8,7 +8,7 @@ function GraphNetwork (parent, props) {
         colorMap
     } = props;
 
-    if (!data) {
+    if (!data || !colorMap) {
         parent.selectAll("*").remove();
         return;
     }
@@ -94,7 +94,7 @@ function GraphNetwork (parent, props) {
 
     const newNode = node.enter().append("g")
         .attr("class", "node")
-        .attr("data-name", d => d.name)
+        .attr("data-name", d => d.name.replace(/['"]+/g,''))
         .call(d3.drag()
             .on("start", dragstarted)
             .on("drag", dragged)
@@ -106,7 +106,7 @@ function GraphNetwork (parent, props) {
     circles.exit().remove();
     circles.enter().append("circle") // Append circles to newNode
     .attr("class", "node-circle")
-    .attr("data-name", d => d.name)
+    .attr("data-name", d => d.name.replace(/['"]+/g,''))
     .attr("r", d => d.type === 'ingredient' ? ingredientRadius : recipeRadius)
     .merge(circles)
     .attr("fill", d => d.type === 'recipe' ? colorMap(d.score) : '#dad2bc')
