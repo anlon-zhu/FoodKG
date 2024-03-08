@@ -6,6 +6,8 @@ import IngredientSelect from './ingredientSelect';
 import RecipeModal from './recipeModal';
 import TopRecipes from './TopRecipes';
 import generateColorMap from './colorMap';
+import CircularProgress from '@mui/material/CircularProgress';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 
 const BASE_URL = process.env.REACT_APP_ENV_URL || "https://ingreedient-flask-api.onrender.com/";
 
@@ -15,6 +17,15 @@ function App() {
   const [graphData, setGraphData] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [recipeNode, setRecipeNode] = useState('');
+  const [loading, setLoading] = useState(false);
+  // Define custom theme
+  const theme = createTheme({
+    palette: {
+        primary: {
+            main: '#ff9800', // Change the main color to your desired color
+        },
+    },
+});
 
   useEffect(() => {
     // Fetch ingredients list from your Flask API
@@ -29,9 +40,11 @@ function App() {
 
   const handleIngredientChange = (event, newValue) => {
     setSelectedIngredients(newValue);
+    setLoading(true);
     
     if (newValue.length === 0) {
       setGraphData(null);
+      setLoading(false);
       return;
     }
     
@@ -45,9 +58,11 @@ function App() {
 
         // Set the graph data with just the values
         setGraphData({ recipeNodes, ingredientNodes, links, topRecipes });
+        setLoading(false);
       })
       .catch(error => {
         console.error('Error fetching graph data:', error);
+        setLoading(false);
       });
   };
 
@@ -62,14 +77,18 @@ function App() {
   const handleMouseClick = useCallback((recipeNode) => {
     d3.select("#tooltip").style("display", "none");
     let recipeId = recipeNode.id;
+    setLoading(true);
+
     axios.get(BASE_URL + 'recipes/' + recipeId + '/ingredients')
       .then(response => {
         recipeNode.ingredients = response.data['ingredient_list'];
         setRecipeNode(recipeNode);
+        setLoading(false);
         setModalOpen(true);
       })
       .catch(error => {
         console.error('Error fetching ingredient data:', error);
+        setLoading(false);
       });
   }, []);
 
@@ -117,11 +136,6 @@ function App() {
   }, [colorMap]);
 
   useEffect(() => {
-    if (graphData) {
-      // You can set up D3 simulation here if needed
-      svg.selectAll("*").remove(); // Clear previous content
-
-      // Call the GraphNetwork component with props
       svg.call(GraphNetwork, {
         data: graphData,
         modalOpen,
@@ -129,12 +143,10 @@ function App() {
         handleMouseEnter,
         handleMouseLeave
       });
-    } else {
-      svg.selectAll("*").remove(); // Clear the SVG if there's no data
-    }
   }, [svg, graphData, modalOpen, recipeNode, handleMouseEnter, handleMouseLeave]);
 
   return (
+    <ThemeProvider theme={theme}>
     <div>
       <h1>in<span style={{ color: 'orange' }}>greedi</span>ent</h1>
       <div style={{ padding: '0px 20px 0px 20px' }}>
@@ -144,9 +156,27 @@ function App() {
         handleIngredientChange={handleIngredientChange}
       />
       </div>
-      <div>
-        <svg id='chart' width={canvasWidth} height={canvasHeight}/>
-      </div>
+      <div style={{ position: 'relative' }}>
+      <svg id='chart' width={canvasWidth} height={canvasHeight}/>
+      {loading && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: canvasWidth,
+            height: canvasHeight,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: 'rgba(255, 255, 255, 0.7)',
+            zIndex: 9999, // ensure the overlay appears on top
+          }}
+        >
+          <CircularProgress/>
+        </div>
+      )}
+    </div>
        {graphData && <TopRecipes graphData={graphData} handleMouseEnter={handleMouseEnter} handleMouseLeave={handleMouseLeave} handleMouseClick={handleMouseClick}/>}
 
       <RecipeModal
@@ -155,6 +185,7 @@ function App() {
         recipeNode={recipeNode}
       />
     </div>
+    </ThemeProvider>
   );
 }
 

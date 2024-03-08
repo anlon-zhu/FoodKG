@@ -1,9 +1,9 @@
 import React from 'react';
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
+import Loader from './IngredientLoad';
 
-const IngredientSelect = ({ ingredients, selectedIngredients, handleIngredientChange }) => {
+const IngredientSelect = ({ ingredients, selectedIngredients, handleIngredientChange, loading }) => {
     const options = ingredients.map((option) => {
         if (!option.category) {
           option.category = 'Other';
@@ -14,19 +14,11 @@ const IngredientSelect = ({ ingredients, selectedIngredients, handleIngredientCh
           ...option,
         };
       });
-
-  // Define custom theme
-  const theme = createTheme({
-      palette: {
-          primary: {
-              main: '#ff9800', // Change the main color to your desired color
-          },
-      },
-  });
       
   return (
-    <ThemeProvider theme={theme}>
     <Autocomplete
+      loading
+      loadingText={<Loader/>}
       multiple
       limitTags={10}
       id="tags-outlined"
@@ -46,7 +38,6 @@ const IngredientSelect = ({ ingredients, selectedIngredients, handleIngredientCh
       )}
       isOptionEqualToValue={(option, value) => option.id === value.id}
     />
-    </ThemeProvider>
   );
 };
 
