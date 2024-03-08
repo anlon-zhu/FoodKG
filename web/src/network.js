@@ -1,11 +1,11 @@
 import * as d3 from "d3";
-import generateColorMap from './colorMap';
 
 function GraphNetwork (parent, props) {
     const {
         data,
         handleMouseEnter,
         handleMouseLeave,
+        colorMap
     } = props;
 
     if (!data) {
@@ -23,8 +23,6 @@ function GraphNetwork (parent, props) {
     let width = +parent.attr('width');
     let height = +parent.attr('height');
     const tooltipPadding = 15;
-    // Set up color map
-    const colorMap = generateColorMap(nodedata);
 
     // Set up parent container
     let container = parent.selectAll(".container").data([null]);
@@ -110,8 +108,8 @@ function GraphNetwork (parent, props) {
     .attr("class", "node-circle")
     .attr("data-name", d => d.name)
     .attr("r", d => d.type === 'ingredient' ? ingredientRadius : recipeRadius)
+    .merge(circles)
     .attr("fill", d => d.type === 'recipe' ? colorMap(d.score) : '#dad2bc')
-    .merge(circles); // Merge enter and update selections
 
     // Append text labels to ingredient nodes using foreignObject for text wrapping
     const foreignText = newNode.filter(d => d.type === 'ingredient')

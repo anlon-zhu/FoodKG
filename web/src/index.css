@@ -29,6 +29,7 @@ h1 {
   font-weight: 500;
   padding: 8px;
   color: #333;
+  z-index: 9999;
 }
 xw
 .tooltip-title {

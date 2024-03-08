@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import axios from 'axios';
 import * as d3 from 'd3';
 import GraphNetwork from './network';
@@ -138,7 +138,10 @@ function App() {
       }
   }, [handleMouseClick]);
 
-  const colorMap = generateColorMap(Object.values(graphData?.recipeNodes || {}));
+  // Memoize the color map generation function
+  const colorMap = useMemo(() => {
+    return generateColorMap(Object.values(graphData?.recipeNodes || {}));
+  }, [graphData]);
 
   const handleMouseLeave = useCallback((recipeName) => { 
       const recipeRadius = 8;
@@ -157,12 +160,11 @@ function App() {
   useEffect(() => {
       svg.call(GraphNetwork, {
         data: graphData,
-        modalOpen,
-        recipeNode,
         handleMouseEnter,
-        handleMouseLeave
+        handleMouseLeave,
+        colorMap,
       });
-  }, [svg, graphData, modalOpen, recipeNode, handleMouseEnter, handleMouseLeave]);
+  }, [svg, graphData, handleMouseEnter, handleMouseLeave, colorMap]);
 
   return (
     <ThemeProvider theme={theme}>
