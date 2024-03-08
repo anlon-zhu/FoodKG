@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import CircularProgress from "@mui/material/CircularProgress";
 
-const Loader = () => {
+const Loader = ({ loaded }) => {
   const [loadingText, setLoadingText] = useState("spinning up application...");
   const loadingMessages = [
     "gathering ingredients...",
@@ -38,6 +38,11 @@ const Loader = () => {
 
     return () => clearInterval(interval); // Cleanup interval on component unmount
   });
+
+  // If loaded but not found.
+  if (loaded) {
+    return <span>This ingredient is not in our pantry.</span>;
+  }
 
   return (
     <div

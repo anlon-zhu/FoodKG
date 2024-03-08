@@ -3,7 +3,7 @@ import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import Loader from './IngredientLoad';
 
-const IngredientSelect = ({ ingredients, selectedIngredients, handleIngredientChange, loading }) => {
+const IngredientSelect = ({ ingredients, selectedIngredients, handleIngredientChange }) => {
     const options = ingredients.map((option) => {
         if (!option.category) {
           option.category = 'Other';
@@ -18,7 +18,7 @@ const IngredientSelect = ({ ingredients, selectedIngredients, handleIngredientCh
   return (
     <Autocomplete
       loading
-      loadingText={<Loader/>}
+      loadingText={<Loader loaded={ingredients.length > 0}/>}
       multiple
       limitTags={10}
       id="tags-outlined"

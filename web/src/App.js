@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import * as d3 from 'd3';
 import GraphNetwork from './network';
@@ -18,6 +18,8 @@ function App() {
   const [modalOpen, setModalOpen] = useState(false);
   const [recipeNode, setRecipeNode] = useState('');
   const [loading, setLoading] = useState(false);
+  const cancelTokenSourceRef = useRef(null); // Ref to store the cancel token source
+
   // Define custom theme
   const theme = createTheme({
     palette: {
@@ -28,29 +30,42 @@ function App() {
 });
 
   useEffect(() => {
-    // Fetch ingredients list from your Flask API
-    axios.get(BASE_URL + 'ingredients')
-      .then(response => {
-        setIngredients(response.data);
-      })
-      .catch(error => {
-        console.error('Error fetching ingredients:', error);
-      });
+    const fetchIngredients = async () => {
+        try {
+            const response = await axios.get(BASE_URL + 'ingredients');
+            setIngredients(response.data);
+        } catch (error) {
+            console.error('Error fetching ingredients:', error);
+            // Retry the request after a delay
+            setTimeout(fetchIngredients, 3000); // Retry after 3 seconds
+        }
+    };
+
+    // Initial call to fetch ingredients
+    fetchIngredients();
   }, []);
 
   const handleIngredientChange = (event, newValue) => {
+    // Cancel the previous request before making a new one
+    if (cancelTokenSourceRef.current) {
+      cancelTokenSourceRef.current.cancel('Request canceled by the user');
+    }
+
+    const cancelTokenSource = axios.CancelToken.source();
+    cancelTokenSourceRef.current = cancelTokenSource;
+
     setSelectedIngredients(newValue);
     setLoading(true);
-    
+
     if (newValue.length === 0) {
       setGraphData(null);
       setLoading(false);
       return;
     }
-    
-    axios.post(BASE_URL + 'recipes/by-ingredients', { ingredientIds: newValue.map(ingredient => ingredient.id)})
+
+    axios.post(BASE_URL + 'recipes/by-ingredients', { ingredientIds: newValue.map(ingredient => ingredient.id) }, { cancelToken: cancelTokenSource.token })
       .then(response => {
-          // Parse the string into an object
+        // Parse the string into an object
         const recipeNodes = JSON.parse(response.data.recipeNodes);
         const ingredientNodes = JSON.parse(response.data.ingredientNodes);
         const links = response.data.links;
@@ -61,10 +76,14 @@ function App() {
         setLoading(false);
       })
       .catch(error => {
-        console.error('Error fetching graph data:', error);
-        setLoading(false);
+        if (!axios.isCancel(error)) {
+          // Ignore canceled requests
+          console.error('Error fetching graph data:', error);
+          setLoading(false);
+        }
       });
   };
+
 
   const svg = d3.select("#chart");
   const canvasWidth = window.innerWidth;
